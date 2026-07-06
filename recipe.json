@@ -1,0 +1,213 @@
+{
+  "schema": "mino-baker-calculator-recipes@1",
+  "recipes": [
+    {
+      "recipeName": "브리오슈",
+      "mode": "A",
+      "baseFlour": 1000,
+      "multiplier": 1,
+      "targetTotal": 25340,
+      "portions": [],
+      "flours": [
+        {
+          "name": "파인T45",
+          "pct": 100
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "설탕",
+          "pct": 21
+        },
+        {
+          "name": "소금",
+          "pct": 2
+        },
+        {
+          "name": "세미드라이이스트골드",
+          "pct": 3
+        },
+        {
+          "name": "전란",
+          "pct": 27
+        },
+        {
+          "name": "우유",
+          "pct": 27
+        },
+        {
+          "name": "꿀",
+          "pct": 3
+        },
+        {
+          "name": "버터",
+          "pct": 38
+        },
+        {
+          "name": "묵은반죽",
+          "pct": 15
+        }
+      ]
+    },
+    {
+      "recipeName": "크루아상",
+      "mode": "A",
+      "baseFlour": 1000,
+      "multiplier": 1,
+      "targetTotal": 3600,
+      "portions": [],
+      "flours": [
+        {
+          "name": "파인T45",
+          "pct": 100
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "설탕",
+          "pct": 10
+        },
+        {
+          "name": "소금",
+          "pct": 2.1999999999999997
+        },
+        {
+          "name": "세미드라이이스트골드",
+          "pct": 3
+        },
+        {
+          "name": "전란",
+          "pct": 5.5
+        },
+        {
+          "name": "꿀",
+          "pct": 3
+        },
+        {
+          "name": "버터",
+          "pct": 10
+        },
+        {
+          "name": "묵은반죽",
+          "pct": 15
+        },
+        {
+          "name": "물",
+          "pct": 38
+        }
+      ]
+    },
+    {
+      "recipeName": "바게트",
+      "mode": "A",
+      "baseFlour": 1000,
+      "multiplier": 1,
+      "targetTotal": 3600,
+      "portions": [],
+      "flours": [
+        {
+          "name": "에밀리T65",
+          "pct": 100
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "물",
+          "pct": 67
+        },
+        {
+          "name": "몰트",
+          "pct": 0.8
+        },
+        {
+          "name": "소금",
+          "pct": 1.7999999999999998
+        },
+        {
+          "name": "생이스트",
+          "pct": 0.7000000000000001
+        },
+        {
+          "name": "르방리퀴드",
+          "pct": 20
+        },
+        {
+          "name": "바시나주",
+          "pct": 5
+        }
+      ]
+    },
+    {
+      "recipeName": "팔공",
+      "mode": "A",
+      "baseFlour": 1000,
+      "multiplier": 1,
+      "targetTotal": 25340,
+      "portions": [],
+      "flours": [
+        {
+          "name": "비즈뮬T80",
+          "pct": 100
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "물",
+          "pct": 70
+        },
+        {
+          "name": "소금",
+          "pct": 2.3
+        },
+        {
+          "name": "이스트(선택)",
+          "pct": 0.1
+        },
+        {
+          "name": "르방뒤흐",
+          "pct": 50
+        },
+        {
+          "name": "바시나주",
+          "pct": 30
+        }
+      ]
+    },
+    {
+      "recipeName": "스펠트",
+      "mode": "A",
+      "baseFlour": 2500,
+      "multiplier": 1,
+      "targetTotal": 3000,
+      "portions": [],
+      "flours": [
+        {
+          "name": "스펠트",
+          "pct": 100
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "소금",
+          "pct": 2.3
+        },
+        {
+          "name": "생이스트",
+          "pct": 0.6
+        },
+        {
+          "name": "르방뒤르",
+          "pct": 30
+        },
+        {
+          "name": "물",
+          "pct": 70
+        },
+        {
+          "name": "바시나주",
+          "pct": 10
+        }
+      ]
+    }
+  ]
+}
