@@ -274,7 +274,6 @@
       <button class="io-btn" id="libraryBtn">저장된 레시피 목록</button>
     </div>
     <p class="hint" id="fsaHint" style="display:none;">지금 환경에서는 파일에 직접 덮어쓰기가 안 돼서, 저장/삭제할 때마다 recipe.json을 새로 받아요. 받은 파일로 기존 걸 덮어써 주세요.</p>
-    <input type="file" id="loadFileInput" accept="application/json,.json" style="display:none;">
   </header>
 
   <section class="card" id="libraryCard" style="display:none;">
@@ -985,57 +984,28 @@
     persistLibrary('레시피를 저장했어요');
   });
 
-  // Open the library (recipe.json) and show what's saved in it
+  // Open the library: always read recipe.json next to this page via a relative fetch
   var libraryListEl = document.getElementById('libraryList');
   var libraryCardEl = document.getElementById('libraryCard');
   var libraryFileHintEl = document.getElementById('libraryFileHint');
-  var loadFileInput = document.getElementById('loadFileInput');
 
-  document.getElementById('libraryBtn').addEventListener('click', async function(){
-    if (hasFSAccess){
-      try {
-        var handles = await window.showOpenFilePicker({
-          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-        });
-        recipeFileHandle = handles[0];
-        library = await readLibraryFromHandle(recipeFileHandle);
+  document.getElementById('libraryBtn').addEventListener('click', function(){
+    fetch('recipe.json', { cache: 'no-store' })
+      .then(function(res){
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data){
+        if (!isValidLibrary(data)) throw new Error('형식이 올바르지 않아요');
+        library = data;
         renderLibraryList();
         libraryCardEl.style.display = 'block';
-        showConnectedFile(recipeFileHandle);
-      } catch (err){
-        if (err && err.name !== 'AbortError') alert('recipe.json을 여는 데 실패했어요: ' + (err && err.message ? err.message : err));
-      }
-    } else {
-      loadFileInput.click();
-    }
-  });
-
-  loadFileInput.addEventListener('change', function(){
-    var file = loadFileInput.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(){
-      var data;
-      try {
-        data = JSON.parse(reader.result);
-      } catch (err){
-        alert('recipe.json을 읽을 수 없어요. JSON 형식이 아니에요.');
-        loadFileInput.value = '';
-        return;
-      }
-      if (!isValidLibrary(data)){
-        alert('recipe.json 형식이 올바르지 않아요.');
-        loadFileInput.value = '';
-        return;
-      }
-      library = data;
-      renderLibraryList();
-      libraryCardEl.style.display = 'block';
-      libraryFileHintEl.textContent = '불러온 파일: ' + file.name + ' (직접 덮어쓰기는 안 돼요 — 저장하면 새로 다운로드돼요)';
-      libraryFileHintEl.style.display = 'block';
-      loadFileInput.value = '';
-    };
-    reader.readAsText(file);
+        libraryFileHintEl.textContent = 'recipe.json에서 불러왔어요';
+        libraryFileHintEl.style.display = 'block';
+      })
+      .catch(function(err){
+        alert('recipe.json을 읽는 데 실패했어요: ' + (err && err.message ? err.message : err));
+      });
   });
 
   function fallbackCopy(text){
