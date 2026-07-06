@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2A241C">
+<title>제빵 계산기</title>
+<style>
+  :root{
+    --bg: #E8E1D0;
+    --bg-card: #FBF9F4;
+    --ink: #2A241C;
+    --ink-soft: #786F5F;
+    --accent-stamp: #B23A2E;
+    --accent-wheat: #A9791F;
+    --accent-green: #4C6947;
+    --border: #D6CDB8;
+    --border-strong: #BFB496;
+    --font-display: ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  body{
+    padding-bottom: 132px; /* room for sticky footer */
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(42,36,28,0.05) 1px, transparent 0);
+    background-size: 14px 14px;
+  }
+  .wrap{ max-width: 560px; margin: 0 auto; padding: 20px 16px 24px; }
+
+  header{ padding: 6px 2px 18px; }
+  .eyebrow{
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 4px;
+  }
+  h1{
+    font-family: var(--font-display); font-weight: 900; font-size: 30px;
+    letter-spacing: -0.01em; margin: 0; line-height: 1.15;
+  }
+  .sub{ color: var(--ink-soft); font-size: 14px; margin-top: 6px; }
+
+  .recipe-name{
+    width:100%; margin-top: 16px; padding: 12px 14px;
+    font-family: var(--font-display); font-weight: 800; font-size: 17px;
+    background: var(--bg-card); border: 1.5px solid var(--border-strong);
+    border-radius: 10px; color: var(--ink);
+  }
+  .recipe-name:focus{ outline: 3px solid var(--accent-wheat); outline-offset: 1px; }
+
+  .io-row{ display:flex; gap:8px; margin-top: 10px; }
+  .io-btn{
+    flex:1; padding: 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--border-strong); background: var(--bg-card);
+    font-family: var(--font-display); font-weight: 800; font-size: 13px;
+    color: var(--ink); cursor:pointer; min-height: 44px;
+  }
+  .io-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
+  .io-btn:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+
+  /* Segmented mode toggle */
+  .mode-toggle{
+    display:flex; gap:6px; background: var(--bg-card);
+    border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 5px;
+    margin-top: 18px;
+  }
+  .mode-btn{
+    flex:1; border:none; background:transparent; padding: 12px 6px;
+    font-family: var(--font-display); font-weight: 800; font-size: 14px;
+    color: var(--ink-soft); border-radius: 8px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    min-height: 52px; justify-content:center;
+  }
+  .mode-btn .tag{ font-size: 10.5px; font-weight: 600; letter-spacing:0.03em; opacity:0.75; }
+  .mode-btn[aria-pressed="true"]{
+    background: var(--ink); color: var(--bg-card);
+  }
+  .mode-btn[aria-pressed="true"] .tag{ color: #E8E1D0; opacity:0.85;}
+  .mode-btn:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+
+  section.card{
+    background: var(--bg-card); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 16px 14px; margin-top: 14px;
+  }
+  .card h2{
+    font-family: var(--font-display); font-size: 13px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+
+  .field-row{ display:flex; align-items:center; gap:10px; }
+  .field-row + .field-row{ margin-top: 12px; }
+  .field-label{ font-size: 14px; font-weight: 600; flex: 0 0 auto; min-width: 92px; }
+  input[type="number"]{
+    font-family: var(--font-mono); font-weight: 700; font-size: 18px;
+    background: #fff; border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 11px 10px; width: 100%; color: var(--ink); min-height: 46px;
+  }
+  input[type="number"]:focus{ outline: 3px solid var(--accent-wheat); outline-offset: 1px; }
+  input[type="number"][readonly]{ background: rgba(169,121,31,0.08); color: var(--accent-wheat); border-color: var(--accent-wheat); }
+  .unit{ font-family: var(--font-mono); font-size: 14px; color: var(--ink-soft); flex:0 0 auto; }
+
+  .portion-row{
+    display:flex; align-items:center; gap:6px; flex-wrap: wrap;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .portion-row:last-of-type{ border-bottom: none; }
+  .portion-weight{ flex: 1 1 80px; min-width: 0; }
+  .portion-qty{ flex: 0 1 64px; min-width: 0; }
+  .portion-sep{ font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); flex: 0 0 auto; }
+  .portion-subtotal{
+    font-family: var(--font-mono); font-weight: 800; font-size: 14px; color: var(--accent-wheat);
+    flex: 0 0 auto; min-width: 72px; text-align: right;
+  }
+
+  .stepper-row{ display:flex; gap:8px; margin-top: 12px; flex-wrap: wrap; }
+  .chip{
+    font-family: var(--font-mono); font-weight: 700; font-size: 14px;
+    background: #fff; border: 1.5px solid var(--border-strong); color: var(--ink);
+    border-radius: 999px; padding: 9px 16px; cursor:pointer; min-height: 40px;
+  }
+  .chip[aria-pressed="true"]{ background: var(--accent-wheat); border-color: var(--accent-wheat); color: #fff; }
+  .chip:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+
+  .pmpm{ display:flex; align-items:center; gap:8px; margin-top: 12px; }
+  .pmpm button{
+    width: 42px; height: 42px; border-radius: 8px; border: 1.5px solid var(--border-strong);
+    background: #fff; font-size: 20px; font-weight: 800; color: var(--ink); cursor:pointer;
+  }
+  .pmpm button:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset:2px; }
+  .pmpm input{ text-align:center; }
+
+  .hint{ font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; line-height:1.5; }
+  .hint button.link{
+    background:none; border:none; padding:0; color: var(--accent-stamp);
+    font-weight:700; font-size: 12.5px; cursor:pointer; text-decoration: underline;
+  }
+
+  /* Ingredient rows */
+  .ing-row{
+    display:grid; grid-template-columns: 1fr 74px 104px 34px;
+    gap: 8px; align-items:center; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ing-row:last-of-type{ border-bottom: none; }
+  .ing-row.flour-row{ background: rgba(169,121,31,0.08); border-radius: 8px; padding: 10px 8px; margin: -2px -8px 4px; border-bottom:none; }
+  .ing-row.reorderable{ grid-template-columns: 1fr 74px 104px 30px 34px; }
+  .ing-name{
+    font-family: var(--font-body); font-weight: 700; font-size: 14.5px;
+    background: transparent; border: none; border-bottom: 1.5px dashed var(--border-strong);
+    padding: 6px 2px; color: var(--ink); min-height:36px;
+  }
+  .ing-name:focus{ outline:none; border-bottom-color: var(--accent-wheat); }
+  .ing-name[readonly]{ border-bottom: none; font-weight: 800; }
+  .pct-input{
+    font-family: var(--font-mono); font-size: 15px; font-weight:700; text-align:right;
+    padding: 8px 6px; min-height: 36px;
+  }
+  .pct-input[readonly]{ background: transparent; border-color: transparent; color: var(--accent-wheat); }
+  .weight-cell{ display:flex; align-items:center; justify-content:flex-end; gap:3px; min-width:0; }
+  .weight-input{
+    font-family: var(--font-mono); font-weight: 800; font-size: 15px; text-align:right;
+    background: #fff; border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 8px 4px; min-height: 36px; width: 100%; min-width:0; color: var(--ink);
+  }
+  .weight-input:focus{ outline: 3px solid var(--accent-wheat); outline-offset: 1px; }
+  .weight-unit{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); flex:0 0 auto; }
+  .flour-row .weight-input{ color: var(--accent-wheat); border-color: var(--accent-wheat); }
+  .del-btn{
+    background: none; border: none; color: var(--ink-soft); font-size: 20px;
+    width: 34px; height: 34px; cursor: pointer; border-radius: 6px;
+  }
+  .del-btn:hover{ color: var(--accent-stamp); }
+  .del-btn:focus-visible{ outline: 2px solid var(--accent-wheat); }
+
+  .reorder-btns{ display:flex; flex-direction:column; gap:2px; }
+  .reorder-btns button{
+    width: 100%; height: 17px; line-height:1; font-size: 10px; padding:0;
+    border: 1px solid var(--border-strong); background:#fff; color: var(--ink-soft);
+    border-radius: 4px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .reorder-btns button:hover:not(:disabled){ color: var(--accent-wheat); border-color: var(--accent-wheat); }
+  .reorder-btns button:disabled{ opacity: 0.3; cursor:default; }
+  .reorder-btns button:focus-visible{ outline: 2px solid var(--accent-wheat); }
+
+  .add-btn{
+    width:100%; margin-top: 12px; padding: 12px; border-radius: 10px;
+    border: 1.5px dashed var(--border-strong); background: transparent;
+    font-family: var(--font-display); font-weight: 800; font-size: 14px;
+    color: var(--ink-soft); cursor:pointer;
+  }
+  .add-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
+
+  .warn-hint{ color: var(--accent-stamp); font-weight: 700; }
+  #flourCard.invalid{ border-color: var(--accent-stamp); }
+
+  .lib-row{
+    display:flex; align-items:center; gap:8px; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .lib-row:last-of-type{ border-bottom: none; }
+  .lib-name{
+    flex:1; min-width:0; font-weight: 700; font-size: 14.5px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .lib-actions{ display:flex; gap:6px; flex:0 0 auto; }
+  .lib-btn{
+    font-family: var(--font-display); font-weight: 800; font-size: 12.5px;
+    border-radius: 8px; padding: 8px 10px; cursor:pointer; min-height: 36px;
+    border: 1.5px solid var(--border-strong); background: #fff; color: var(--ink);
+  }
+  .lib-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
+  .lib-btn.danger:hover{ border-color: var(--accent-stamp); color: var(--accent-stamp); }
+
+  /* Sticky footer stamp */
+  .footer{
+    position: fixed; left:0; right:0; bottom:0;
+    background: var(--ink); color: var(--bg-card);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; align-items:center; gap:14px;
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.18);
+  }
+  .footer-inner{ max-width: 560px; margin: 0 auto; width:100%; display:flex; align-items:center; gap:14px; }
+  .stamp{
+    flex: 0 0 auto; width: 78px; height: 78px; border-radius: 50%;
+    border: 3px solid var(--accent-stamp); color: var(--accent-stamp);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transform: rotate(-8deg); background: rgba(178,58,46,0.06);
+  }
+  .stamp .num{ font-family: var(--font-mono); font-weight: 900; font-size: 18px; line-height:1; }
+  .stamp .u{ font-family: var(--font-mono); font-size: 9px; letter-spacing:0.06em; margin-top:2px; }
+  .footer-text{ flex:1; min-width:0; }
+  .footer-label{ font-size: 11px; letter-spacing:0.06em; text-transform:uppercase; color: #C9C2B2; }
+  .footer-value{ font-family: var(--font-mono); font-weight: 800; font-size: 20px; margin-top:2px; }
+  .copy-btn{
+    flex: 0 0 auto; background: var(--bg-card); color: var(--ink); border:none;
+    padding: 12px 14px; border-radius: 10px; font-family: var(--font-display);
+    font-weight: 800; font-size: 13px; cursor:pointer; min-height: 44px;
+  }
+  .copy-btn:active{ transform: scale(0.97); }
+  .copy-btn.copied{ background: var(--accent-green); color:#fff; }
+
+  .toast{
+    position: fixed; left:50%; bottom: 150px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; font-weight:700; opacity:0; pointer-events:none;
+    transition: opacity 0.25s ease;
+  }
+  .toast.show{ opacity: 1; }
+
+  @media (max-width: 360px){
+    .ing-row{ grid-template-columns: 1fr 62px 86px 30px; }
+    .ing-row.reorderable{ grid-template-columns: 1fr 62px 86px 26px 30px; }
+    h1{ font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">MINO · 계량 도구</p>
+    <h1>제빵 계산기</h1>
+    <p class="sub">밀가루 기준 베이커스 퍼센트로 배율·총 반죽량을 계산해요.</p>
+    <input class="recipe-name" id="recipeName" value="기본 바게트 반죽" aria-label="레시피 이름">
+    <div class="io-row">
+      <button class="io-btn" id="saveBtn">레시피 저장</button>
+      <button class="io-btn" id="libraryBtn">저장된 레시피 목록</button>
+    </div>
+    <p class="hint" id="fsaHint" style="display:none;">지금 환경에서는 파일에 직접 덮어쓰기가 안 돼서, 저장/삭제할 때마다 recipe.json을 새로 받아요. 받은 파일로 기존 걸 덮어써 주세요.</p>
+    <input type="file" id="loadFileInput" accept="application/json,.json" style="display:none;">
+  </header>
+
+  <section class="card" id="libraryCard" style="display:none;">
+    <h2>recipe.json에 저장된 레시피</h2>
+    <p class="hint" id="libraryFileHint" style="display:none;"></p>
+    <div id="libraryList"></div>
+    <p class="hint" id="libraryEmptyHint" style="display:none;">아직 저장된 레시피가 없어요.</p>
+  </section>
+
+  <div class="mode-toggle" role="group" aria-label="계산 모드 선택">
+    <button class="mode-btn" id="modeABtn" aria-pressed="true">
+      배율 조정
+      <span class="tag">기준량 × 배수</span>
+    </button>
+    <button class="mode-btn" id="modeBBtn" aria-pressed="false">
+      총 반죽량 기준
+      <span class="tag">목표 무게 역산</span>
+    </button>
+  </div>
+
+  <section class="card" id="modeAPanel">
+    <h2>기준 밀가루량 &amp; 배율</h2>
+    <div class="field-row">
+      <span class="field-label">기준 밀가루</span>
+      <input type="number" inputmode="decimal" id="baseFlour" value="1000" min="0" step="10">
+      <span class="unit">g</span>
+    </div>
+    <div class="stepper-row" id="multChips">
+      <button class="chip" data-mult="1">×1</button>
+      <button class="chip" data-mult="1.5">×1.5</button>
+      <button class="chip" data-mult="2" aria-pressed="true">×2</button>
+      <button class="chip" data-mult="3">×3</button>
+      <button class="chip" data-mult="custom">직접입력</button>
+    </div>
+    <div class="pmpm">
+      <button id="multMinus" aria-label="배율 줄이기">−</button>
+      <input type="number" inputmode="decimal" id="multInput" value="2" step="0.1" min="0.1" style="max-width:100px;">
+      <button id="multPlus" aria-label="배율 늘리기">+</button>
+      <span class="unit">배</span>
+    </div>
+    <p class="hint">기준 밀가루량에 배율을 곱해 전체 반죽을 스케일합니다.</p>
+  </section>
+
+  <section class="card" id="modeBPanel" style="display:none;">
+    <h2>목표 총 반죽량</h2>
+    <div class="field-row">
+      <span class="field-label">총 반죽량</span>
+      <input type="number" inputmode="decimal" id="targetTotal" value="3000" min="0" step="10">
+      <span class="unit">g</span>
+    </div>
+    <p class="hint">원하는 총 무게를 입력하면 재료 비율에 맞춰 밀가루량을 역산합니다.</p>
+
+    <div id="portionList"></div>
+    <button class="add-btn" id="addPortionBtn">+ 반죽 분할 추가</button>
+    <p class="hint" id="portionSumHint" style="display:none;">
+      분할 합계 <span id="portionSum">0</span>g가 총 반죽량에 반영돼요 (직접 입력 비활성화)
+    </p>
+  </section>
+
+  <section class="card" id="flourCard">
+    <h2>밀가루 (합계 100%)</h2>
+    <div id="flourList"></div>
+    <button class="add-btn" id="addFlourBtn">+ 밀가루 종류 추가</button>
+    <p class="hint warn-hint" id="flourPctWarning" style="display:none;">
+      밀가루 비율 합계가 100%가 아니에요 (현재 <span id="flourPctSum">100</span>%)
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>재료 (밀가루 기준 %)</h2>
+    <div id="ingList"></div>
+    <button class="add-btn" id="addIngBtn">+ 재료 추가</button>
+    <p class="hint">퍼센트나 중량, 편한 쪽을 입력하면 서로 자동 계산돼요.</p>
+    <p class="hint">
+      베이커스 퍼센트가 처음이신가요?
+      <button class="link" id="pctInfoBtn">퍼센트란?</button>
+    </p>
+    <p class="hint" id="pctInfo" style="display:none;">
+      밀가루 무게를 100%로 두고, 다른 재료는 밀가루 대비 비율(%)로 표시하는 방식이에요.
+      예: 수분율 65% = 밀가루 1000g일 때 물 650g.
+    </p>
+  </section>
+</div>
+
+<div class="footer">
+  <div class="footer-inner">
+    <div class="stamp">
+      <span class="num" id="stampTotal">0</span>
+      <span class="u">TOTAL g</span>
+    </div>
+    <div class="footer-text">
+      <div class="footer-label">밀가루 합계 <span id="flourWeightLabel">0g</span> 기준</div>
+      <div class="footer-value" id="totalWeightText">0g</div>
+    </div>
+    <button class="copy-btn" id="copyBtn">결과 복사</button>
+  </div>
+</div>
+<div class="toast" id="toast">복사되었습니다</div>
+
+<script>
+(function(){
+  var state = {
+    mode: 'A',
+    flours: [
+      { name: '밀가루', pct: 100 }
+    ],
+    baseFlour: 1000,
+    multiplier: 2,
+    targetTotal: 3000,
+    portions: [],
+    ingredients: [
+      { name: '물', pct: 65 },
+      { name: '소금', pct: 2 },
+      { name: '이스트', pct: 1 }
+    ]
+  };
+
+  var flourListEl = document.getElementById('flourList');
+  var ingListEl = document.getElementById('ingList');
+  var portionListEl = document.getElementById('portionList');
+  var portionSumHintEl = document.getElementById('portionSumHint');
+  var portionSumEl = document.getElementById('portionSum');
+  var flourCardEl = document.getElementById('flourCard');
+  var flourPctWarningEl = document.getElementById('flourPctWarning');
+  var flourPctSumEl = document.getElementById('flourPctSum');
+  var modeABtn = document.getElementById('modeABtn');
+  var modeBBtn = document.getElementById('modeBBtn');
+  var modeAPanel = document.getElementById('modeAPanel');
+  var modeBPanel = document.getElementById('modeBPanel');
+  var baseFlourInput = document.getElementById('baseFlour');
+  var multInput = document.getElementById('multInput');
+  var targetTotalInput = document.getElementById('targetTotal');
+  var stampTotal = document.getElementById('stampTotal');
+  var totalWeightText = document.getElementById('totalWeightText');
+  var flourWeightLabel = document.getElementById('flourWeightLabel');
+  var toastEl = document.getElementById('toast');
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(function(){ toastEl.classList.remove('show'); }, 1600);
+  }
+
+  function roundWeight(g){
+    if (g < 10) return Math.round(g * 10) / 10;
+    return Math.round(g);
+  }
+  function fmt(g){
+    var r = roundWeight(g);
+    return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(1));
+  }
+
+  function computeFlourWeight(){
+    if (state.mode === 'A'){
+      return state.baseFlour * state.multiplier;
+    } else {
+      var totalPct = 100 + state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.pct)||0); }, 0);
+      return state.targetTotal / (totalPct/100);
+    }
+  }
+
+  function pctFromWeight(weight, flourWeight){
+    if (!flourWeight) return 0;
+    return (parseFloat(weight)||0) / flourWeight * 100;
+  }
+
+  function attachRefreshOnBlur(el){
+    el.addEventListener('blur', function(){ updateDisplays(); });
+  }
+
+  // With a single flour type, its % is trivially 100 (nothing to split with) — editing its
+  // weight is really editing the recipe's total flour weight, so drive that anchor instead
+  // (baseFlour in Mode A, targetTotal in Mode B) rather than treating it as a % of itself.
+  function setTotalFlourWeight(target){
+    if (state.mode === 'A'){
+      state.baseFlour = state.multiplier ? target / state.multiplier : target;
+      baseFlourInput.value = fmt(state.baseFlour);
+    } else {
+      var totalPct = 100 + state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.pct)||0); }, 0);
+      state.targetTotal = target * (totalPct/100);
+      targetTotalInput.value = fmt(state.targetTotal);
+    }
+  }
+
+  // Full structural rebuild: only needed when rows are added/removed, or on first load.
+  function render(){
+    buildFlourRows();
+    buildIngRows();
+    buildPortionRows();
+    updateDisplays();
+  }
+
+  // Mode B can build up the target total from several dough portions — e.g. "200g × 130개"
+  // for a batch of identically-sized units — instead of one number. Whenever any portions
+  // exist, their summed (weight × qty) is the source of truth for state.targetTotal and the
+  // plain input becomes a readonly display of that sum.
+  function portionSubtotal(p){
+    return (parseFloat(p.weight)||0) * (parseFloat(p.qty)||0);
+  }
+  function syncTargetTotalFromPortions(){
+    if (state.portions.length > 0){
+      state.targetTotal = state.portions.reduce(function(s,p){ return s + portionSubtotal(p); }, 0);
+    }
+    targetTotalInput.readOnly = state.portions.length > 0;
+  }
+
+  function buildPortionRows(){
+    portionListEl.innerHTML = '';
+    state.portions.forEach(function(p, idx){
+      var row = document.createElement('div');
+      row.className = 'portion-row';
+      row.innerHTML =
+        '<input class="portion-weight" type="number" inputmode="decimal" step="10" value="' + p.weight + '" data-idx="' + idx + '" aria-label="분할 무게" placeholder="분할g">' +
+        '<span class="portion-sep">g ×</span>' +
+        '<input class="portion-qty" type="number" inputmode="decimal" step="1" value="' + p.qty + '" data-idx="' + idx + '" aria-label="수량" placeholder="수량">' +
+        '<span class="portion-sep">개 =</span>' +
+        '<span class="portion-subtotal" data-idx="' + idx + '">' + fmt(portionSubtotal(p)) + 'g</span>' +
+        '<button class="del-btn" data-idx="' + idx + '" aria-label="분할 삭제">×</button>';
+      portionListEl.appendChild(row);
+    });
+
+    portionListEl.querySelectorAll('.portion-weight[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.portions[+el.dataset.idx].weight = parseFloat(el.value) || 0;
+        syncTargetTotalFromPortions();
+        updateDisplays();
+      });
+    });
+    portionListEl.querySelectorAll('.portion-qty[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.portions[+el.dataset.idx].qty = parseFloat(el.value) || 0;
+        syncTargetTotalFromPortions();
+        updateDisplays();
+      });
+    });
+    portionListEl.querySelectorAll('.del-btn[data-idx]').forEach(function(el){
+      el.addEventListener('click', function(){
+        state.portions.splice(+el.dataset.idx, 1);
+        syncTargetTotalFromPortions();
+        render();
+      });
+    });
+  }
+
+  function buildFlourRows(){
+    flourListEl.innerHTML = '';
+    state.flours.forEach(function(fl, idx){
+      var row = document.createElement('div');
+      row.className = 'ing-row flour-row';
+      var singleFlour = state.flours.length === 1;
+      row.innerHTML =
+        '<input class="ing-name" value="' + escapeHtml(fl.name) + '" data-idx="' + idx + '" aria-label="밀가루 이름">' +
+        '<input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + fl.pct + '" data-idx="' + idx + '" aria-label="밀가루 비율"' + (singleFlour ? ' readonly' : '') + '>' +
+        '<span class="weight-cell"><input class="weight-input" type="number" inputmode="decimal" step="1" data-idx="' + idx + '" aria-label="밀가루 중량"><span class="weight-unit">g</span></span>' +
+        (state.flours.length > 1
+          ? '<button class="del-btn" data-idx="' + idx + '" aria-label="밀가루 삭제">×</button>'
+          : '<span></span>');
+      flourListEl.appendChild(row);
+    });
+
+    flourListEl.querySelectorAll('.ing-name[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.flours[+el.dataset.idx].name = el.value;
+      });
+    });
+    flourListEl.querySelectorAll('.pct-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        if (state.flours.length === 1) return; // % is pinned to 100 with a single flour type
+        state.flours[+el.dataset.idx].pct = el.value;
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    flourListEl.querySelectorAll('.weight-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        // Editing one flour's weight in grams means "this type weighs X" — the other
+        // flour types keep their current gram amounts, so the total (and hence each
+        // type's %) is recomputed from the sum of grams, not from a fixed total split.
+        var idx = +el.dataset.idx;
+        var flourWeight = computeFlourWeight();
+        var weights = state.flours.map(function(f, i){
+          return i === idx ? (parseFloat(el.value) || 0) : flourWeight * (parseFloat(f.pct)||0) / 100;
+        });
+        var newTotal = weights.reduce(function(s,w){ return s + w; }, 0);
+        state.flours.forEach(function(f, i){
+          f.pct = newTotal ? (weights[i] / newTotal * 100) : 0;
+        });
+        setTotalFlourWeight(newTotal);
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    flourListEl.querySelectorAll('.del-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        if (state.flours.length > 1){
+          state.flours.splice(+el.dataset.idx, 1);
+          if (state.flours.length === 1) state.flours[0].pct = 100;
+          render();
+        }
+      });
+    });
+  }
+
+  function buildIngRows(){
+    ingListEl.innerHTML = '';
+    state.ingredients.forEach(function(ing, idx){
+      var row = document.createElement('div');
+      row.className = 'ing-row reorderable';
+      row.innerHTML =
+        '<input class="ing-name" value="' + escapeHtml(ing.name) + '" data-idx="' + idx + '" aria-label="재료 이름">' +
+        '<input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + ing.pct + '" data-idx="' + idx + '" aria-label="재료 비율">' +
+        '<span class="weight-cell"><input class="weight-input" type="number" inputmode="decimal" step="1" data-idx="' + idx + '" aria-label="재료 중량"><span class="weight-unit">g</span></span>' +
+        '<span class="reorder-btns">' +
+        '<button data-idx="' + idx + '" data-dir="-1" aria-label="위로 이동"' + (idx === 0 ? ' disabled' : '') + '>▲</button>' +
+        '<button data-idx="' + idx + '" data-dir="1" aria-label="아래로 이동"' + (idx === state.ingredients.length - 1 ? ' disabled' : '') + '>▼</button>' +
+        '</span>' +
+        '<button class="del-btn" data-idx="' + idx + '" aria-label="재료 삭제">×</button>';
+      ingListEl.appendChild(row);
+    });
+
+    ingListEl.querySelectorAll('.ing-name[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.ingredients[+el.dataset.idx].name = el.value;
+      });
+    });
+    ingListEl.querySelectorAll('.pct-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.ingredients[+el.dataset.idx].pct = el.value;
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    ingListEl.querySelectorAll('.weight-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        var flourWeight = computeFlourWeight();
+        state.ingredients[+el.dataset.idx].pct = pctFromWeight(el.value, flourWeight);
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    ingListEl.querySelectorAll('.reorder-btns button').forEach(function(el){
+      el.addEventListener('click', function(){
+        var idx = +el.dataset.idx;
+        var newIdx = idx + (+el.dataset.dir);
+        if (newIdx < 0 || newIdx >= state.ingredients.length) return;
+        var tmp = state.ingredients[idx];
+        state.ingredients[idx] = state.ingredients[newIdx];
+        state.ingredients[newIdx] = tmp;
+        render();
+      });
+    });
+    ingListEl.querySelectorAll('.del-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        state.ingredients.splice(+el.dataset.idx, 1);
+        render();
+      });
+    });
+  }
+
+  // Lightweight refresh: recomputes derived numbers and writes them into existing
+  // DOM nodes (never rebuilds), so the field the user is actively typing in keeps focus.
+  function updateDisplays(){
+    if (state.flours.length === 1) state.flours[0].pct = 100;
+    syncTargetTotalFromPortions();
+    if (state.portions.length > 0 && document.activeElement !== targetTotalInput){
+      targetTotalInput.value = fmt(state.targetTotal);
+    }
+    portionSumHintEl.style.display = state.portions.length > 0 ? 'block' : 'none';
+    portionSumEl.textContent = fmt(state.targetTotal);
+    state.portions.forEach(function(p, idx){
+      var subtotalEl = portionListEl.querySelector('.portion-subtotal[data-idx="' + idx + '"]');
+      if (subtotalEl) subtotalEl.textContent = fmt(portionSubtotal(p)) + 'g';
+    });
+
+    var flourWeight = computeFlourWeight();
+    if (!isFinite(flourWeight) || flourWeight < 0) flourWeight = 0;
+
+    state.flours.forEach(function(fl, idx){
+      var w = flourWeight * (parseFloat(fl.pct)||0) / 100;
+      var pctEl = flourListEl.querySelector('.pct-input[data-idx="' + idx + '"]');
+      var wEl = flourListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
+      if (pctEl && document.activeElement !== pctEl) pctEl.value = fl.pct;
+      if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+    });
+
+    state.ingredients.forEach(function(ing, idx){
+      var w = flourWeight * (parseFloat(ing.pct)||0) / 100;
+      var pctEl = ingListEl.querySelector('.pct-input[data-idx="' + idx + '"]');
+      var wEl = ingListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
+      if (pctEl && document.activeElement !== pctEl) pctEl.value = ing.pct;
+      if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+    });
+
+    var flourPctSum = state.flours.reduce(function(s,f){ return s + (parseFloat(f.pct)||0); }, 0);
+    var flourWarn = Math.abs(flourPctSum - 100) > 0.05;
+    flourPctWarningEl.style.display = flourWarn ? 'block' : 'none';
+    flourPctSumEl.textContent = Math.round(flourPctSum * 10) / 10;
+    flourCardEl.classList.toggle('invalid', flourWarn);
+
+    var total = flourWeight + state.ingredients.reduce(function(s,i){
+      return s + flourWeight * ((parseFloat(i.pct)||0)/100);
+    }, 0);
+
+    stampTotal.textContent = fmt(total);
+    totalWeightText.textContent = fmt(total) + 'g';
+    flourWeightLabel.textContent = fmt(flourWeight) + 'g';
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // Mode toggle
+  function applyModeUI(){
+    modeABtn.setAttribute('aria-pressed', state.mode === 'A');
+    modeBBtn.setAttribute('aria-pressed', state.mode === 'B');
+    modeAPanel.style.display = state.mode === 'A' ? '' : 'none';
+    modeBPanel.style.display = state.mode === 'B' ? '' : 'none';
+  }
+  function setMode(m){
+    state.mode = m;
+    applyModeUI();
+    updateDisplays();
+  }
+  modeABtn.addEventListener('click', function(){ setMode('A'); });
+  modeBBtn.addEventListener('click', function(){ setMode('B'); });
+
+  // Mode A inputs
+  baseFlourInput.addEventListener('input', function(){
+    state.baseFlour = parseFloat(baseFlourInput.value) || 0;
+    updateDisplays();
+  });
+  multInput.addEventListener('input', function(){
+    state.multiplier = parseFloat(multInput.value) || 0;
+    document.querySelectorAll('#multChips .chip').forEach(function(c){ c.setAttribute('aria-pressed','false'); });
+    updateDisplays();
+  });
+  document.getElementById('multMinus').addEventListener('click', function(){
+    state.multiplier = Math.max(0.1, Math.round((state.multiplier - 0.5)*10)/10);
+    multInput.value = state.multiplier;
+    updateDisplays();
+  });
+  document.getElementById('multPlus').addEventListener('click', function(){
+    state.multiplier = Math.round((state.multiplier + 0.5)*10)/10;
+    multInput.value = state.multiplier;
+    updateDisplays();
+  });
+  document.querySelectorAll('#multChips .chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      document.querySelectorAll('#multChips .chip').forEach(function(c){ c.setAttribute('aria-pressed','false'); });
+      if (chip.dataset.mult === 'custom'){
+        chip.setAttribute('aria-pressed','true');
+        multInput.focus();
+        return;
+      }
+      chip.setAttribute('aria-pressed','true');
+      state.multiplier = parseFloat(chip.dataset.mult);
+      multInput.value = state.multiplier;
+      updateDisplays();
+    });
+  });
+
+  // Mode B input
+  targetTotalInput.addEventListener('input', function(){
+    state.targetTotal = parseFloat(targetTotalInput.value) || 0;
+    updateDisplays();
+  });
+
+  // Add dough portion (Mode B: sums weight × qty into the target total)
+  document.getElementById('addPortionBtn').addEventListener('click', function(){
+    state.portions.push({ weight: 0, qty: 1 });
+    render();
+    var rows = portionListEl.querySelectorAll('.portion-weight[data-idx]');
+    var last = rows[rows.length-1];
+    if (last){ last.focus(); last.select(); }
+  });
+
+  // Add flour type
+  document.getElementById('addFlourBtn').addEventListener('click', function(){
+    state.flours.push({ name: '밀가루', pct: 0 });
+    render();
+    var rows = flourListEl.querySelectorAll('.ing-name[data-idx]');
+    var last = rows[rows.length-1];
+    if (last){ last.focus(); last.select(); }
+  });
+
+  // Add ingredient
+  document.getElementById('addIngBtn').addEventListener('click', function(){
+    state.ingredients.push({ name: '재료', pct: 0 });
+    render();
+    var rows = ingListEl.querySelectorAll('.ing-name[data-idx]');
+    var last = rows[rows.length-1];
+    if (last){ last.focus(); last.select(); }
+  });
+
+  // Percent info toggle
+  document.getElementById('pctInfoBtn').addEventListener('click', function(){
+    var el = document.getElementById('pctInfo');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // Copy results
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var flourWeight = computeFlourWeight();
+    var lines = [document.getElementById('recipeName').value, ''];
+    state.flours.forEach(function(fl){
+      var w = flourWeight * (parseFloat(fl.pct)||0) / 100;
+      lines.push(fl.name + '  ' + fmt(w) + 'g  (' + fl.pct + '%)');
+    });
+    state.ingredients.forEach(function(ing){
+      var w = flourWeight * (parseFloat(ing.pct)||0) / 100;
+      lines.push(ing.name + '  ' + fmt(w) + 'g  (' + ing.pct + '%)');
+    });
+    var total = flourWeight + state.ingredients.reduce(function(s,i){
+      return s + flourWeight * ((parseFloat(i.pct)||0)/100);
+    }, 0);
+    lines.push('');
+    if (state.portions.length > 0){
+      lines.push('반죽 분할  ' + state.portions.map(function(p){ return fmt(p.weight) + 'g×' + p.qty + '개'; }).join(' + ') + '  =  ' + fmt(state.targetTotal) + 'g');
+    }
+    lines.push('총 반죽량  ' + fmt(total) + 'g');
+    var text = lines.join('\n');
+
+    var btn = document.getElementById('copyBtn');
+    var showCopyToast = function(){
+      showToast('복사되었습니다');
+      btn.textContent = '복사됨';
+      btn.classList.add('copied');
+      setTimeout(function(){ btn.textContent = '결과 복사'; btn.classList.remove('copied'); }, 1600);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(showCopyToast).catch(function(){
+        fallbackCopy(text); showCopyToast();
+      });
+    } else {
+      fallbackCopy(text); showCopyToast();
+    }
+  });
+
+  // --- recipe.json library: one file holding many recipes ---
+  // On Chromium browsers, served over http(s)/localhost (File System Access API) we keep
+  // a real file handle for the session and read-modify-write that same file in place.
+  // Elsewhere — Safari/Firefox/mobile (no File System Access API at all), or this page
+  // opened directly via file:// (the picker APIs exist and can *read*, but Chrome blocks
+  // `createWritable()` for file:// pages with "not allowed by the user agent or the
+  // platform in the current context") — there's no way to edit an arbitrary local file
+  // from the page, so we fall back to re-downloading the whole library as "recipe.json"
+  // every time it changes; the user replaces their local copy with the new download.
+  var hasFSAccess = location.protocol !== 'file:' && !!(window.showSaveFilePicker && window.showOpenFilePicker);
+  var recipeFileHandle = null;
+  var library = { schema: 'mino-baker-calculator-recipes@1', recipes: [] };
+
+  document.getElementById('fsaHint').style.display = hasFSAccess ? 'none' : 'block';
+
+  function isValidLibrary(data){
+    return !!data && typeof data === 'object' && Array.isArray(data.recipes);
+  }
+
+  function serializeCurrentRecipe(){
+    return {
+      recipeName: document.getElementById('recipeName').value || '이름 없는 레시피',
+      mode: state.mode,
+      baseFlour: state.baseFlour,
+      multiplier: state.multiplier,
+      targetTotal: state.targetTotal,
+      portions: state.portions,
+      flours: state.flours,
+      ingredients: state.ingredients
+    };
+  }
+
+  function applyRecipeToState(data){
+    document.getElementById('recipeName').value = data.recipeName || '';
+    state.mode = data.mode === 'B' ? 'B' : 'A';
+    state.baseFlour = parseFloat(data.baseFlour) || 0;
+    state.multiplier = parseFloat(data.multiplier) || 1;
+    state.targetTotal = parseFloat(data.targetTotal) || 0;
+    state.portions = (Array.isArray(data.portions) ? data.portions : []).map(function(p){
+      if (typeof p === 'number') return { weight: p, qty: 1 }; // older recipe.json files stored a plain weight
+      return { weight: parseFloat(p && p.weight) || 0, qty: parseFloat(p && p.qty) || 1 };
+    });
+    state.flours = (Array.isArray(data.flours) ? data.flours : []).map(function(f){
+      return { name: String(f && f.name || ''), pct: parseFloat(f && f.pct) || 0 };
+    });
+    if (state.flours.length === 0) state.flours = [{ name: '밀가루', pct: 100 }];
+    state.ingredients = (Array.isArray(data.ingredients) ? data.ingredients : []).map(function(i){
+      return { name: String(i && i.name || ''), pct: parseFloat(i && i.pct) || 0 };
+    });
+
+    baseFlourInput.value = state.baseFlour;
+    multInput.value = state.multiplier;
+    targetTotalInput.value = state.targetTotal;
+    document.querySelectorAll('#multChips .chip').forEach(function(c){
+      var isPreset = c.dataset.mult !== 'custom' && parseFloat(c.dataset.mult) === state.multiplier;
+      c.setAttribute('aria-pressed', isPreset ? 'true' : 'false');
+    });
+
+    applyModeUI();
+    render();
+  }
+
+  function upsertRecipe(recipe){
+    var idx = library.recipes.findIndex(function(r){ return r.recipeName === recipe.recipeName; });
+    if (idx >= 0) library.recipes[idx] = recipe; else library.recipes.push(recipe);
+  }
+
+  function downloadLibrary(){
+    var json = JSON.stringify(library, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'recipe.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function writeLibraryToHandle(){
+    var writable = await recipeFileHandle.createWritable();
+    await writable.write(JSON.stringify(library, null, 2));
+    await writable.close();
+  }
+
+  async function readLibraryFromHandle(handle){
+    try {
+      var file = await handle.getFile();
+      var text = await file.text();
+      if (!text) return { schema: library.schema, recipes: [] };
+      var data = JSON.parse(text);
+      return isValidLibrary(data) ? data : { schema: library.schema, recipes: [] };
+    } catch (err){
+      return { schema: library.schema, recipes: [] };
+    }
+  }
+
+  function renderLibraryList(){
+    libraryListEl.innerHTML = '';
+    library.recipes.forEach(function(recipe, idx){
+      var row = document.createElement('div');
+      row.className = 'lib-row';
+      row.innerHTML =
+        '<span class="lib-name">' + escapeHtml(recipe.recipeName || '이름 없는 레시피') + '</span>' +
+        '<span class="lib-actions">' +
+        '<button class="lib-btn" data-idx="' + idx + '" data-action="load">불러오기</button>' +
+        '<button class="lib-btn danger" data-idx="' + idx + '" data-action="delete">삭제</button>' +
+        '</span>';
+      libraryListEl.appendChild(row);
+    });
+    document.getElementById('libraryEmptyHint').style.display = library.recipes.length ? 'none' : 'block';
+
+    libraryListEl.querySelectorAll('[data-action="load"]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        applyRecipeToState(library.recipes[+btn.dataset.idx]);
+        showToast('레시피를 불러왔어요');
+      });
+    });
+    libraryListEl.querySelectorAll('[data-action="delete"]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        library.recipes.splice(+btn.dataset.idx, 1);
+        renderLibraryList();
+        persistLibrary('레시피를 삭제했어요');
+      });
+    });
+  }
+
+  function showConnectedFile(handle){
+    libraryFileHintEl.textContent = '연결된 파일: ' + handle.name;
+    libraryFileHintEl.style.display = 'block';
+  }
+
+  function persistLibrary(successMsg){
+    if (hasFSAccess && recipeFileHandle){
+      writeLibraryToHandle().then(function(){
+        showToast(successMsg + ' (' + recipeFileHandle.name + ')');
+      }).catch(function(err){
+        alert('recipe.json에 쓰지 못했어요: ' + (err && err.message ? err.message : err));
+      });
+    } else {
+      downloadLibrary();
+      showToast(successMsg + ' (recipe.json 다운로드됨)');
+    }
+  }
+
+  // Save current recipe into the library (add, or overwrite by matching name)
+  document.getElementById('saveBtn').addEventListener('click', async function(){
+    if (hasFSAccess && !recipeFileHandle){
+      try {
+        recipeFileHandle = await window.showSaveFilePicker({
+          suggestedName: 'recipe.json',
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+        });
+        library = await readLibraryFromHandle(recipeFileHandle); // merge with existing content, if any
+      } catch (err){
+        if (err && err.name === 'AbortError') return;
+        recipeFileHandle = null; // fall through to download fallback below
+        alert('파일 저장 위치를 여는 데 실패했어요: ' + (err && err.message ? err.message : err) + '\n(recipe.json 다운로드로 대신 저장할게요)');
+      }
+    }
+    upsertRecipe(serializeCurrentRecipe());
+    renderLibraryList();
+    libraryCardEl.style.display = 'block';
+    if (recipeFileHandle) showConnectedFile(recipeFileHandle);
+    persistLibrary('레시피를 저장했어요');
+  });
+
+  // Open the library (recipe.json) and show what's saved in it
+  var libraryListEl = document.getElementById('libraryList');
+  var libraryCardEl = document.getElementById('libraryCard');
+  var libraryFileHintEl = document.getElementById('libraryFileHint');
+  var loadFileInput = document.getElementById('loadFileInput');
+
+  document.getElementById('libraryBtn').addEventListener('click', async function(){
+    if (hasFSAccess){
+      try {
+        var handles = await window.showOpenFilePicker({
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+        });
+        recipeFileHandle = handles[0];
+        library = await readLibraryFromHandle(recipeFileHandle);
+        renderLibraryList();
+        libraryCardEl.style.display = 'block';
+        showConnectedFile(recipeFileHandle);
+      } catch (err){
+        if (err && err.name !== 'AbortError') alert('recipe.json을 여는 데 실패했어요: ' + (err && err.message ? err.message : err));
+      }
+    } else {
+      loadFileInput.click();
+    }
+  });
+
+  loadFileInput.addEventListener('change', function(){
+    var file = loadFileInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var data;
+      try {
+        data = JSON.parse(reader.result);
+      } catch (err){
+        alert('recipe.json을 읽을 수 없어요. JSON 형식이 아니에요.');
+        loadFileInput.value = '';
+        return;
+      }
+      if (!isValidLibrary(data)){
+        alert('recipe.json 형식이 올바르지 않아요.');
+        loadFileInput.value = '';
+        return;
+      }
+      library = data;
+      renderLibraryList();
+      libraryCardEl.style.display = 'block';
+      libraryFileHintEl.textContent = '불러온 파일: ' + file.name + ' (직접 덮어쓰기는 안 돼요 — 저장하면 새로 다운로드돼요)';
+      libraryFileHintEl.style.display = 'block';
+      loadFileInput.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
