@@ -172,6 +172,42 @@
           "pct": 30
         }
       ]
+    },
+    {
+      "recipeName": "스펠트",
+      "mode": "A",
+      "baseFlour": 2500,
+      "multiplier": 1,
+      "targetTotal": 3000,
+      "portions": [],
+      "flours": [
+        {
+          "name": "스펠트",
+          "pct": 100
+        }
+      ],
+      "ingredients": [
+        {
+          "name": "소금",
+          "pct": 2.3
+        },
+        {
+          "name": "생이스트",
+          "pct": 0.6
+        },
+        {
+          "name": "르방뒤르",
+          "pct": 30
+        },
+        {
+          "name": "물",
+          "pct": 70
+        },
+        {
+          "name": "바시나주",
+          "pct": 10
+        }
+      ]
     }
   ]
 }
