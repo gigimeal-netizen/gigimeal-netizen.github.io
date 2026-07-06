@@ -48,12 +48,11 @@
   .sub{ color: var(--ink-soft); font-size: 14px; margin-top: 6px; }
 
   .recipe-name{
-    width:100%; margin-top: 16px; padding: 12px 14px;
+    width:100%; margin: 16px 0 0; padding: 12px 14px;
     font-family: var(--font-display); font-weight: 800; font-size: 17px;
     background: var(--bg-card); border: 1.5px solid var(--border-strong);
     border-radius: 10px; color: var(--ink);
   }
-  .recipe-name:focus{ outline: 3px solid var(--accent-wheat); outline-offset: 1px; }
 
   .io-row{ display:flex; gap:8px; margin-top: 10px; }
   .io-btn{
@@ -217,7 +216,6 @@
     border: 1.5px solid var(--border-strong); background: #fff; color: var(--ink);
   }
   .lib-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
-  .lib-btn.danger:hover{ border-color: var(--accent-stamp); color: var(--accent-stamp); }
 
   /* Sticky footer stamp */
   .footer{
@@ -268,12 +266,10 @@
     <p class="eyebrow">MINO · 계량 도구</p>
     <h1>제빵 계산기</h1>
     <p class="sub">밀가루 기준 베이커스 퍼센트로 배율·총 반죽량을 계산해요.</p>
-    <input class="recipe-name" id="recipeName" value="기본 바게트 반죽" aria-label="레시피 이름">
+    <p class="recipe-name" id="recipeName">기본 바게트 반죽</p>
     <div class="io-row">
-      <button class="io-btn" id="saveBtn">레시피 저장</button>
       <button class="io-btn" id="libraryBtn">저장된 레시피 목록</button>
     </div>
-    <p class="hint" id="fsaHint" style="display:none;">지금 환경에서는 파일에 직접 덮어쓰기가 안 돼서, 저장/삭제할 때마다 recipe.json을 새로 받아요. 받은 파일로 기존 걸 덮어써 주세요.</p>
   </header>
 
   <section class="card" id="libraryCard" style="display:none;">
@@ -780,7 +776,7 @@
   // Copy results
   document.getElementById('copyBtn').addEventListener('click', function(){
     var flourWeight = computeFlourWeight();
-    var lines = [document.getElementById('recipeName').value, ''];
+    var lines = [document.getElementById('recipeName').textContent, ''];
     state.flours.forEach(function(fl){
       var w = flourWeight * (parseFloat(fl.pct)||0) / 100;
       lines.push(fl.name + '  ' + fmt(w) + 'g  (' + fl.pct + '%)');
@@ -816,40 +812,19 @@
     }
   });
 
-  // --- recipe.json library: one file holding many recipes ---
-  // On Chromium browsers, served over http(s)/localhost (File System Access API) we keep
-  // a real file handle for the session and read-modify-write that same file in place.
-  // Elsewhere — Safari/Firefox/mobile (no File System Access API at all), or this page
-  // opened directly via file:// (the picker APIs exist and can *read*, but Chrome blocks
-  // `createWritable()` for file:// pages with "not allowed by the user agent or the
-  // platform in the current context") — there's no way to edit an arbitrary local file
-  // from the page, so we fall back to re-downloading the whole library as "recipe.json"
-  // every time it changes; the user replaces their local copy with the new download.
-  var hasFSAccess = location.protocol !== 'file:' && !!(window.showSaveFilePicker && window.showOpenFilePicker);
-  var recipeFileHandle = null;
+  // --- recipe.json library: read-only view for this page ---
+  // index.html is the public/team-facing calculator: it can browse and load recipes from
+  // recipe.json (hosted next to this page), but can't rename/save/delete them — that's
+  // reserved for manager.html. So this is just a plain fetch, no File System Access API,
+  // no write path at all.
   var library = { schema: 'mino-baker-calculator-recipes@1', recipes: [] };
-
-  document.getElementById('fsaHint').style.display = hasFSAccess ? 'none' : 'block';
 
   function isValidLibrary(data){
     return !!data && typeof data === 'object' && Array.isArray(data.recipes);
   }
 
-  function serializeCurrentRecipe(){
-    return {
-      recipeName: document.getElementById('recipeName').value || '이름 없는 레시피',
-      mode: state.mode,
-      baseFlour: state.baseFlour,
-      multiplier: state.multiplier,
-      targetTotal: state.targetTotal,
-      portions: state.portions,
-      flours: state.flours,
-      ingredients: state.ingredients
-    };
-  }
-
   function applyRecipeToState(data){
-    document.getElementById('recipeName').value = data.recipeName || '';
+    document.getElementById('recipeName').textContent = data.recipeName || '';
     state.mode = data.mode === 'B' ? 'B' : 'A';
     state.baseFlour = parseFloat(data.baseFlour) || 0;
     state.multiplier = parseFloat(data.multiplier) || 1;
@@ -878,42 +853,6 @@
     render();
   }
 
-  function upsertRecipe(recipe){
-    var idx = library.recipes.findIndex(function(r){ return r.recipeName === recipe.recipeName; });
-    if (idx >= 0) library.recipes[idx] = recipe; else library.recipes.push(recipe);
-  }
-
-  function downloadLibrary(){
-    var json = JSON.stringify(library, null, 2);
-    var blob = new Blob([json], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'recipe.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  async function writeLibraryToHandle(){
-    var writable = await recipeFileHandle.createWritable();
-    await writable.write(JSON.stringify(library, null, 2));
-    await writable.close();
-  }
-
-  async function readLibraryFromHandle(handle){
-    try {
-      var file = await handle.getFile();
-      var text = await file.text();
-      if (!text) return { schema: library.schema, recipes: [] };
-      var data = JSON.parse(text);
-      return isValidLibrary(data) ? data : { schema: library.schema, recipes: [] };
-    } catch (err){
-      return { schema: library.schema, recipes: [] };
-    }
-  }
-
   function renderLibraryList(){
     libraryListEl.innerHTML = '';
     library.recipes.forEach(function(recipe, idx){
@@ -923,7 +862,6 @@
         '<span class="lib-name">' + escapeHtml(recipe.recipeName || '이름 없는 레시피') + '</span>' +
         '<span class="lib-actions">' +
         '<button class="lib-btn" data-idx="' + idx + '" data-action="load">불러오기</button>' +
-        '<button class="lib-btn danger" data-idx="' + idx + '" data-action="delete">삭제</button>' +
         '</span>';
       libraryListEl.appendChild(row);
     });
@@ -935,54 +873,7 @@
         showToast('레시피를 불러왔어요');
       });
     });
-    libraryListEl.querySelectorAll('[data-action="delete"]').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        library.recipes.splice(+btn.dataset.idx, 1);
-        renderLibraryList();
-        persistLibrary('레시피를 삭제했어요');
-      });
-    });
   }
-
-  function showConnectedFile(handle){
-    libraryFileHintEl.textContent = '연결된 파일: ' + handle.name;
-    libraryFileHintEl.style.display = 'block';
-  }
-
-  function persistLibrary(successMsg){
-    if (hasFSAccess && recipeFileHandle){
-      writeLibraryToHandle().then(function(){
-        showToast(successMsg + ' (' + recipeFileHandle.name + ')');
-      }).catch(function(err){
-        alert('recipe.json에 쓰지 못했어요: ' + (err && err.message ? err.message : err));
-      });
-    } else {
-      downloadLibrary();
-      showToast(successMsg + ' (recipe.json 다운로드됨)');
-    }
-  }
-
-  // Save current recipe into the library (add, or overwrite by matching name)
-  document.getElementById('saveBtn').addEventListener('click', async function(){
-    if (hasFSAccess && !recipeFileHandle){
-      try {
-        recipeFileHandle = await window.showSaveFilePicker({
-          suggestedName: 'recipe.json',
-          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
-        });
-        library = await readLibraryFromHandle(recipeFileHandle); // merge with existing content, if any
-      } catch (err){
-        if (err && err.name === 'AbortError') return;
-        recipeFileHandle = null; // fall through to download fallback below
-        alert('파일 저장 위치를 여는 데 실패했어요: ' + (err && err.message ? err.message : err) + '\n(recipe.json 다운로드로 대신 저장할게요)');
-      }
-    }
-    upsertRecipe(serializeCurrentRecipe());
-    renderLibraryList();
-    libraryCardEl.style.display = 'block';
-    if (recipeFileHandle) showConnectedFile(recipeFileHandle);
-    persistLibrary('레시피를 저장했어요');
-  });
 
   // Open the library: always read recipe.json next to this page via a relative fetch
   var libraryListEl = document.getElementById('libraryList');
