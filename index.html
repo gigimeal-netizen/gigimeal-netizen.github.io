@@ -451,7 +451,23 @@
 
   function pctFromWeight(weight, flourWeight){
     if (!flourWeight) return 0;
-    return (parseFloat(weight)||0) / flourWeight * 100;
+    return roundPct((parseFloat(weight)||0) / flourWeight * 100);
+  }
+
+  // Weight↔% conversions produce float noise (e.g. 2.1999999999999997) that, left
+  // unrounded, makes the % field show a long digit string and visually clip in its
+  // narrow column. Round to 2 decimals — plenty of precision for a percentage, and
+  // clean enough to never overflow.
+  function roundPct(p){
+    return Math.round((parseFloat(p)||0) * 100) / 100;
+  }
+
+  // % / weight boxes are a fixed width, but recipes can scale up to numbers with far
+  // more digits than the box was sized for (e.g. a 26000g batch). Rather than clip the
+  // text, shrink the font as the value gets longer so it always stays fully visible.
+  function fitDigits(el){
+    var len = (el.value || '').toString().length;
+    el.style.fontSize = len <= 5 ? '' : Math.max(10, 15 - (len - 5) * 1.2) + 'px';
   }
 
   function attachRefreshOnBlur(el){
@@ -540,7 +556,7 @@
       var singleFlour = state.flours.length === 1;
       row.innerHTML =
         '<input class="ing-name" value="' + escapeHtml(fl.name) + '" data-idx="' + idx + '" aria-label="밀가루 이름">' +
-        '<input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + fl.pct + '" data-idx="' + idx + '" aria-label="밀가루 비율"' + (singleFlour ? ' readonly' : '') + '>' +
+        '<input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + roundPct(fl.pct) + '" data-idx="' + idx + '" aria-label="밀가루 비율"' + (singleFlour ? ' readonly' : '') + '>' +
         '<span class="weight-cell"><input class="weight-input" type="number" inputmode="decimal" step="1" data-idx="' + idx + '" aria-label="밀가루 중량"><span class="weight-unit">g</span></span>' +
         (state.flours.length > 1
           ? '<button class="del-btn" data-idx="' + idx + '" aria-label="밀가루 삭제">×</button>'
@@ -573,7 +589,7 @@
         });
         var newTotal = weights.reduce(function(s,w){ return s + w; }, 0);
         state.flours.forEach(function(f, i){
-          f.pct = newTotal ? (weights[i] / newTotal * 100) : 0;
+          f.pct = pctFromWeight(weights[i], newTotal);
         });
         setTotalFlourWeight(newTotal);
         updateDisplays();
@@ -598,7 +614,7 @@
       row.className = 'ing-row reorderable';
       row.innerHTML =
         '<input class="ing-name" value="' + escapeHtml(ing.name) + '" data-idx="' + idx + '" aria-label="재료 이름">' +
-        '<input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + ing.pct + '" data-idx="' + idx + '" aria-label="재료 비율">' +
+        '<input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + roundPct(ing.pct) + '" data-idx="' + idx + '" aria-label="재료 비율">' +
         '<span class="weight-cell"><input class="weight-input" type="number" inputmode="decimal" step="1" data-idx="' + idx + '" aria-label="재료 중량"><span class="weight-unit">g</span></span>' +
         '<span class="reorder-btns">' +
         '<button data-idx="' + idx + '" data-dir="-1" aria-label="위로 이동"' + (idx === 0 ? ' disabled' : '') + '>▲</button>' +
@@ -660,6 +676,10 @@
     state.portions.forEach(function(p, idx){
       var subtotalEl = portionListEl.querySelector('.portion-subtotal[data-idx="' + idx + '"]');
       if (subtotalEl) subtotalEl.textContent = fmt(portionSubtotal(p)) + 'g';
+      var pWeightEl = portionListEl.querySelector('.portion-weight[data-idx="' + idx + '"]');
+      var pQtyEl = portionListEl.querySelector('.portion-qty[data-idx="' + idx + '"]');
+      if (pWeightEl) fitDigits(pWeightEl);
+      if (pQtyEl) fitDigits(pQtyEl);
     });
 
     var flourWeight = computeFlourWeight();
@@ -669,16 +689,20 @@
       var w = flourWeight * (parseFloat(fl.pct)||0) / 100;
       var pctEl = flourListEl.querySelector('.pct-input[data-idx="' + idx + '"]');
       var wEl = flourListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
-      if (pctEl && document.activeElement !== pctEl) pctEl.value = fl.pct;
+      if (pctEl && document.activeElement !== pctEl) pctEl.value = roundPct(fl.pct);
       if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+      if (pctEl) fitDigits(pctEl);
+      if (wEl) fitDigits(wEl);
     });
 
     state.ingredients.forEach(function(ing, idx){
       var w = flourWeight * (parseFloat(ing.pct)||0) / 100;
       var pctEl = ingListEl.querySelector('.pct-input[data-idx="' + idx + '"]');
       var wEl = ingListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
-      if (pctEl && document.activeElement !== pctEl) pctEl.value = ing.pct;
+      if (pctEl && document.activeElement !== pctEl) pctEl.value = roundPct(ing.pct);
       if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+      if (pctEl) fitDigits(pctEl);
+      if (wEl) fitDigits(wEl);
     });
 
     var flourPctSum = state.flours.reduce(function(s,f){ return s + (parseFloat(f.pct)||0); }, 0);
@@ -852,11 +876,11 @@
       return { weight: parseFloat(p && p.weight) || 0, qty: parseFloat(p && p.qty) || 1 };
     });
     state.flours = (Array.isArray(data.flours) ? data.flours : []).map(function(f){
-      return { name: String(f && f.name || ''), pct: parseFloat(f && f.pct) || 0 };
+      return { name: String(f && f.name || ''), pct: roundPct(f && f.pct) };
     });
     if (state.flours.length === 0) state.flours = [{ name: '밀가루', pct: 100 }];
     state.ingredients = (Array.isArray(data.ingredients) ? data.ingredients : []).map(function(i){
-      return { name: String(i && i.name || ''), pct: parseFloat(i && i.pct) || 0 };
+      return { name: String(i && i.name || ''), pct: roundPct(i && i.pct) };
     });
 
     baseFlourInput.value = state.baseFlour;
