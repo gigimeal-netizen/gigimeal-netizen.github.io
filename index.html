@@ -465,9 +465,11 @@
   // % / weight boxes are a fixed width, but recipes can scale up to numbers with far
   // more digits than the box was sized for (e.g. a 26000g batch). Rather than clip the
   // text, shrink the font as the value gets longer so it always stays fully visible.
-  function fitDigits(el){
+  // Also used for name fields (baseSize 14.5) since long ingredient names clip the same way.
+  function fitDigits(el, baseSize){
+    var base = baseSize || 15;
     var len = (el.value || '').toString().length;
-    el.style.fontSize = len <= 5 ? '' : Math.max(10, 15 - (len - 5) * 1.2) + 'px';
+    el.style.fontSize = len <= 4 ? '' : Math.max(10, base - (len - 4) * 1.2) + 'px';
   }
 
   function attachRefreshOnBlur(el){
@@ -565,8 +567,10 @@
     });
 
     flourListEl.querySelectorAll('.ing-name[data-idx]').forEach(function(el){
+      fitDigits(el, 14.5);
       el.addEventListener('input', function(){
         state.flours[+el.dataset.idx].name = el.value;
+        fitDigits(el, 14.5);
       });
     });
     flourListEl.querySelectorAll('.pct-input[data-idx]').forEach(function(el){
@@ -625,8 +629,10 @@
     });
 
     ingListEl.querySelectorAll('.ing-name[data-idx]').forEach(function(el){
+      fitDigits(el, 14.5);
       el.addEventListener('input', function(){
         state.ingredients[+el.dataset.idx].name = el.value;
+        fitDigits(el, 14.5);
       });
     });
     ingListEl.querySelectorAll('.pct-input[data-idx]').forEach(function(el){
