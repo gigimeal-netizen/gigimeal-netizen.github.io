@@ -1,0 +1,3043 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0B0C0E">
+<title>제빵 계산기 · 내 계정</title>
+<!-- Google AdSense — account.html only (see CLAUDE.md for why the other two pages stay
+     dependency-free). Publisher ID is real (site verification, 2026-07-24); the <ins> ad
+     slot below still needs a real data-ad-slot once an ad unit is created post-approval. -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4940071095968122" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --bg: #0B0C0E;
+    --bg-card: #17181C;
+    --bg-elevated: #202127;
+    --ink: #EDEDF0;
+    --ink-soft: #8B8D98;
+    --accent: #5E6AD2;
+    --accent-soft: rgba(94,106,210,0.16);
+    --danger: #E5484D;
+    --danger-soft: rgba(229,72,77,0.16);
+    --success: #3DD68C;
+    --border: #232429;
+    --border-strong: #34363D;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-pop: 0 8px 24px rgba(0,0,0,0.45);
+    --shadow-footer: 0 -8px 24px rgba(0,0,0,0.4);
+    --font-display: ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
+  }
+  /* Light variant of the same design language (not the old bakery palette) — toggled by
+     JS setting data-theme on <html> and remembered in localStorage. Every rule below
+     already reads these as var()s, so this override block is the only place theme values
+     live; nothing else needs a light-specific copy. */
+  html[data-theme="light"]{
+    --bg: #F5F6F8;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #FFFFFF;
+    --ink: #1C1C1F;
+    --ink-soft: #6B6F76;
+    --accent: #5E6AD2;
+    --accent-soft: rgba(94,106,210,0.10);
+    --danger: #E5484D;
+    --danger-soft: rgba(229,72,77,0.10);
+    --success: #1F9D55;
+    --border: #E4E5E9;
+    --border-strong: #D3D5DB;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.05), 0 1px 1px rgba(0,0,0,0.03);
+    --shadow-pop: 0 8px 24px rgba(0,0,0,0.12);
+    --shadow-footer: 0 -8px 24px rgba(0,0,0,0.08);
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  body{ padding-bottom: 132px; /* room for sticky footer */ }
+  .wrap{ max-width: 580px; margin: 0 auto; padding: 28px 18px 24px; }
+
+  header{ padding: 6px 2px 20px; }
+  .eyebrow{
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 4px;
+  }
+  h1{
+    font-family: var(--font-display); font-weight: 900; font-size: 30px;
+    letter-spacing: -0.01em; margin: 0; line-height: 1.15;
+  }
+  .sub{ color: var(--ink-soft); font-size: 14px; margin-top: 6px; }
+
+  .recipe-name{
+    flex: 1 1 auto; min-width: 0; margin: 0; padding: 12px 14px;
+    font-family: var(--font-display); font-weight: 800; font-size: 17px;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong);
+    border-radius: 10px; color: var(--ink);
+  }
+  .recipe-name:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+
+  .io-btn{
+    flex:1; padding: 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--border-strong); background: var(--bg-elevated);
+    font-family: var(--font-display); font-weight: 800; font-size: 13px;
+    color: var(--ink); cursor:pointer; min-height: 44px;
+  }
+  .io-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .io-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+  .io-btn:disabled{ opacity: 0.45; cursor: default; }
+  .io-btn:disabled:hover{ border-color: var(--border-strong); color: var(--ink); }
+  .io-btn.primary{ background: var(--accent); border-color: var(--accent); color: #fff; }
+  .io-btn.primary:hover{ color: #fff; opacity: 0.9; }
+  .io-btn.danger{ color: var(--danger); border-color: var(--danger); }
+  .io-btn.danger:hover{ background: var(--danger-soft); }
+
+  /* Header: title + tucked-away account menu, instead of full-width login/logout rows */
+  .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .header-actions{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .icon-btn{
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    width:44px; height:44px; padding:0; border-radius:999px;
+    border: 1.5px solid var(--border-strong); background: var(--bg-elevated); color: var(--ink);
+    cursor:pointer; transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .icon-btn svg{ width:20px; height:20px; display:block; }
+  .icon-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .icon-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+  .icon-btn.primary{ background: var(--accent); border-color: var(--accent); color: #fff; }
+  .icon-btn.primary:hover{ color: #fff; opacity: 0.9; }
+  .icon-btn.danger{ color: var(--danger); border-color: var(--danger); }
+  .icon-btn.danger:hover{ background: var(--danger-soft); }
+  /* justify-content:flex-end only matters when there's no flex-growing child to soak up
+     the row (e.g. the notes card's save/share/delete row) — the top toolbar's recipe-name
+     input already flex-grows to fill the row, so this doesn't change that one's layout. */
+  .toolbar-icons{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  /* Which icon shows follows data-theme purely in CSS — dark (default) shows the moon,
+     light shows the sun; applyTheme() in JS only needs to set the attribute. */
+  .theme-toggle .icon-sun{ display:none; }
+  html[data-theme="light"] .theme-toggle .icon-sun{ display:block; }
+  html[data-theme="light"] .theme-toggle .icon-moon{ display:none; }
+  .account-chip-wrap{ position:relative; flex:0 0 auto; }
+  .account-menu{
+    position:absolute; right:0; top: calc(100% + 6px); z-index: 20; min-width: 190px;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 10px;
+    box-shadow: var(--shadow-pop); padding: 8px;
+  }
+  .menu-btn{
+    display:block; width:100%; padding: 10px 12px; margin-top: 4px; min-height: 44px;
+    border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--bg-card);
+    font-family: var(--font-display); font-weight: 700; font-size: 13px;
+    color: var(--ink); cursor:pointer; text-align:left;
+  }
+  .menu-btn:first-child{ margin-top: 0; }
+  .menu-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .menu-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* Recipe toolbar: name + new/save always visible; search/share/delete only once logged in */
+  .toolbar-divider{ border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* Segmented mode toggle */
+  .mode-toggle{
+    display:flex; gap:6px; background: var(--bg-card);
+    border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 6px;
+    margin-top: 20px;
+  }
+  .mode-btn{
+    flex:1; border:none; background:transparent; padding: 12px 6px;
+    font-family: var(--font-display); font-weight: 800; font-size: 14px;
+    color: var(--ink-soft); border-radius: 8px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    min-height: 52px; justify-content:center;
+  }
+  .mode-btn .tag{ font-size: 10.5px; font-weight: 600; letter-spacing:0.03em; opacity:0.75; }
+  .mode-btn[aria-pressed="true"]{
+    background: var(--ink); color: var(--bg-card);
+  }
+  .mode-btn[aria-pressed="true"] .tag{ color: var(--bg); opacity:0.85;}
+  .mode-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  section.card{
+    background: var(--bg-card); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 20px 18px; margin-top: 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .card h2{
+    font-family: var(--font-display); font-size: 13px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+
+  .field-row{ display:flex; align-items:center; gap:10px; }
+  .field-row + .field-row{ margin-top: 14px; }
+  .field-label{ font-size: 14px; font-weight: 600; flex: 0 0 auto; min-width: 92px; }
+  input[type="number"]{
+    font-family: var(--font-mono); font-weight: 700; font-size: 21px;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 11px 10px; width: 100%; color: var(--ink); min-height: 48px;
+  }
+  input[type="number"]:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  input[type="number"][readonly]{ background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .unit{ font-family: var(--font-mono); font-size: 14px; color: var(--ink-soft); flex:0 0 auto; }
+
+  .portion-row{
+    display:flex; align-items:center; gap:6px; flex-wrap: wrap;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .portion-row:last-of-type{ border-bottom: none; }
+  .portion-weight{ flex: 1 1 80px; min-width: 0; }
+  .portion-qty{ flex: 0 1 64px; min-width: 0; }
+  .portion-sep{ font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); flex: 0 0 auto; }
+  .portion-subtotal{
+    font-family: var(--font-mono); font-weight: 800; font-size: 15px; color: var(--accent);
+    flex: 0 0 auto; min-width: 72px; text-align: right;
+  }
+
+  /* Ingredient manager (재료 관리): each row is name+toggle on top, purchase amount/unit/
+     price + computed cost on a wrapping second line — reuses .portion-row's flex-wrap
+     rhythm since this is an occasional settings screen, not the tight scale-reading grid
+     the flour/ingredient rows need. */
+  .ingredient-mgr-row{ padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .ingredient-mgr-row:last-of-type{ border-bottom: none; }
+  .ingredient-mgr-top{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+  .ing-mgr-name{ flex: 1 1 auto; min-width: 0; }
+  .ingredient-mgr-top .io-btn{ flex: 0 0 auto; padding: 8px 12px; min-height: 0; }
+  .ing-mgr-category{
+    display: block; width: 100%; margin-top: 6px; font-size: 13px;
+    padding: 7px 10px; min-height: 36px; color: var(--ink-soft);
+  }
+  .ingredient-mgr-cost{ display:flex; align-items:center; gap:6px; flex-wrap: wrap; margin-top: 8px; }
+  .ing-mgr-amount{ flex: 1 1 70px; min-width: 0; }
+  .ing-mgr-unit{
+    flex: 0 0 auto; font-family: var(--font-mono); font-size: 14px; color: var(--ink);
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 10px 6px; min-height: 44px;
+  }
+  .ing-mgr-price{ flex: 1 1 90px; min-width: 0; }
+  .ing-mgr-per-gram{
+    font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);
+    flex: 1 1 100%; text-align: right;
+  }
+
+  /* Products (제품 & 원가): same row rhythm as the ingredient manager — name+delete on top,
+     portion weight/selling price on a wrapping line, computed cost/margin below. */
+  .product-row{ padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .product-row:last-of-type{ border-bottom: none; }
+  .product-top{ display:flex; align-items:center; gap:8px; }
+  .product-name{ flex: 1 1 auto; min-width: 0; }
+  .product-cost-inputs{ display:flex; align-items:center; gap:6px; flex-wrap: wrap; margin-top: 8px; }
+  .product-weight{ flex: 1 1 90px; min-width: 0; }
+  .product-price{ flex: 1 1 90px; min-width: 0; }
+  .product-loss{ flex: 1 1 80px; min-width: 0; }
+  .product-cost-result{
+    font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);
+    text-align: right; margin-top: 6px;
+  }
+  .loss-calc-toggle{
+    flex: 0 0 auto; background: none; border: 1.5px dashed var(--border-strong);
+    border-radius: 8px; padding: 8px 10px; color: var(--ink-soft);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700; cursor: pointer;
+  }
+  .loss-calc-toggle:hover{ border-color: var(--accent); color: var(--accent); }
+  .loss-calc-panel{ display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .loss-calc-dough, .loss-calc-formed{ flex: 1 1 100px; min-width: 0; }
+  .loss-calc-sep{ flex: 0 0 auto; color: var(--ink-soft); font-size: 12px; }
+  .loss-calc-result{ flex: 1 1 100%; text-align: right; font-size: 12.5px; color: var(--accent); font-weight: 700; }
+
+  /* 조합 제품 (여러 레시피를 합친 제품): a composite row holds several component rows, each
+     a recipe-picker + its own weight/loss rate — reuses .ing-link-combo (already
+     position:relative, flex:1 1 auto) for the recipe search so it doesn't need its own CSS. */
+  .composite-row{ padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .composite-row:last-of-type{ border-bottom: none; }
+  .composite-top{ display: flex; align-items: center; gap: 8px; }
+  .composite-name{ flex: 1 1 auto; min-width: 0; }
+  .composite-component-row{
+    padding: 10px 0; border-bottom: 1px dashed var(--border);
+  }
+  .composite-component-row:last-of-type{ border-bottom: none; }
+  .component-top{ display: flex; align-items: center; gap: 8px; }
+  .component-cost-inputs{ display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .component-weight, .component-loss{ flex: 1 1 90px; min-width: 0; }
+  .component-cost-result{ margin-top: 6px; text-align: right; font-size: 12px; color: var(--ink-soft); }
+  .composite-cost-inputs{ display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .composite-price{ flex: 1 1 auto; min-width: 0; }
+  .composite-cost-result{
+    margin-top: 8px; font-family: var(--font-mono); font-size: 13px;
+    color: var(--ink-soft); text-align: right;
+  }
+  .composite-issue-hint{ margin-top: 4px; }
+
+
+  .pmpm{ display:flex; align-items:center; gap:8px; margin-top: 12px; }
+  .pmpm button{
+    width: 44px; height: 44px; border-radius: 8px; border: 1.5px solid var(--border-strong);
+    background: var(--bg-elevated); font-size: 20px; font-weight: 800; color: var(--ink); cursor:pointer;
+  }
+  .pmpm button:focus-visible{ outline: 3px solid var(--accent); outline-offset:2px; }
+  .pmpm input{ text-align:center; }
+
+  /* Ad slot: kept visually separate from the recipe cards (no card background/border)
+     so it never reads as part of the calculator's own content. */
+  .ad-slot{ margin-top: 18px; text-align:center; }
+  .ad-label{
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 6px;
+  }
+
+  .hint{ font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; line-height:1.5; word-break: keep-all; }
+  .hint button.link{
+    background:none; border:none; padding:0; color: var(--accent);
+    font-weight:700; font-size: 12.5px; cursor:pointer; text-decoration: underline;
+  }
+
+  /* Ingredient rows: name gets its own full-width line so it can never clip regardless of
+     how long it is (this used to be a grid column sharing the row with the number fields,
+     which meant a long name either got clipped or shrunk to an unreadably tiny font — see
+     2026-07-25 fix). The numbers (.ing-row-numbers) sit on their own line below: pct
+     (de-emphasized, muted) vs weight (the number you actually weigh out, given the accent
+     tint) are deliberately styled apart so the two read as different kinds of data at a
+     glance, not just two number boxes side by side. */
+  .ing-row{
+    display:flex; flex-direction:column; gap: 8px; padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ing-row:last-of-type{ border-bottom: none; }
+  .ing-row.flour-row{ background: var(--accent-soft); border-radius: 8px; padding: 12px 8px; margin: -2px -8px 4px; border-bottom:none; }
+  .ing-row-numbers{ display:flex; align-items:center; gap: 8px; }
+  .ing-name{
+    width: 100%; display: block;
+    font-family: var(--font-body); font-weight: 700; font-size: 14.5px;
+    background: transparent; border: none; border-bottom: 1.5px dashed var(--border-strong);
+    padding: 6px 2px; color: var(--ink); min-height:36px; min-width: 0;
+  }
+  .ing-name:focus{ outline:none; border-bottom-color: var(--accent); }
+  .ing-name[readonly]{ border-bottom: none; font-weight: 800; }
+  /* Mirrors .weight-cell/.weight-unit below — a "%" suffix so the pct field reads as
+     unambiguously a percentage at a glance, the same way "g" already does for weight. */
+  .pct-cell{ flex: 0 0 64px; display:flex; align-items:center; justify-content:flex-end; gap:3px; min-width:0; }
+  .pct-input{
+    width: 100%;
+    font-family: var(--font-mono); font-size: 16px; font-weight:700; text-align:right;
+    background: var(--bg); border: 1.5px solid var(--border); color: var(--ink-soft);
+    border-radius: 8px; padding: 8px 6px; min-height: 44px; min-width: 0;
+  }
+  .pct-input[readonly]{ background: transparent; border-color: transparent; color: var(--accent); }
+  .pct-unit{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); flex:0 0 auto; }
+  .weight-cell{ flex: 1 1 112px; display:flex; align-items:center; justify-content:flex-end; gap:3px; min-width:0; }
+  .weight-input{
+    font-family: var(--font-mono); font-weight: 800; font-size: 17px; text-align:right;
+    background: var(--accent-soft); border: 1.5px solid var(--accent); border-radius: 8px;
+    padding: 8px 6px; min-height: 44px; width: 100%; min-width:0; color: var(--ink);
+  }
+  .weight-input:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  .weight-unit{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); flex:0 0 auto; }
+  .flour-row .weight-input{ color: var(--accent); border-color: var(--accent); }
+  .del-btn{
+    background: none; border: none; color: var(--ink-soft); font-size: 22px;
+    width: 44px; height: 44px; cursor: pointer; border-radius: 6px;
+  }
+  .del-btn:hover{ color: var(--danger); }
+  .del-btn:focus-visible{ outline: 2px solid var(--accent); }
+
+  .reorder-btns{ flex: 0 0 30px; display:flex; flex-direction:column; gap:2px; min-width: 0; }
+  .reorder-btns button{
+    width: 100%; height: 17px; line-height:1; font-size: 10px; padding:0;
+    border: 1px solid var(--border-strong); background:var(--bg-elevated); color: var(--ink-soft);
+    border-radius: 4px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .reorder-btns button:hover:not(:disabled){ color: var(--accent); border-color: var(--accent); }
+  .reorder-btns button:disabled{ opacity: 0.3; cursor:default; }
+  .reorder-btns button:focus-visible{ outline: 2px solid var(--accent); }
+
+  .add-btn{
+    width:100%; margin-top: 12px; padding: 12px; border-radius: 10px;
+    border: 1.5px dashed var(--border-strong); background: transparent;
+    font-family: var(--font-display); font-weight: 800; font-size: 14px;
+    color: var(--ink-soft); cursor:pointer;
+  }
+  .add-btn:hover{ border-color: var(--accent); color: var(--accent); }
+
+  .warn-hint{ color: var(--danger); font-weight: 700; }
+  #flourCard.invalid{ border-color: var(--danger); }
+
+
+  /* Sharing panel for the recipe currently selected via the search box */
+  .share-panel{ padding: 10px 0 12px; border-bottom: 1px solid var(--border); }
+  .share-panel:last-child{ border-bottom: none; }
+  .text-input{
+    font-family: var(--font-body); font-size: 14px; flex: 1 1 auto; min-width: 0;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 10px; color: var(--ink); min-height: 44px;
+  }
+  .text-input:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  .notes-input{
+    width: 100%; font-family: var(--font-body); font-size: 14px; line-height: 1.6;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 12px; color: var(--ink); resize: vertical; min-height: 88px;
+  }
+  .notes-input:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  .link-row{ display:flex; align-items:center; gap:8px; margin-top: 10px; }
+  .link-url{
+    font-family: var(--font-mono); font-size: 12px; word-break: break-all;
+    background: var(--accent-soft); border-radius: 8px; padding: 8px 10px;
+    margin: 0; flex: 1 1 auto; min-width: 0;
+  }
+  .link-row .io-btn{ flex: 0 0 auto; padding: 8px 12px; min-height: 0; }
+
+  /* Generic searchable-dropdown combo box: originally built just for "내 레시피", now also
+     reused for the cost-calc modal's recipe picker and its per-ingredient DB linker
+     (.ing-link-combo below) — never for the recipe editor itself, which keeps plain
+     free-text ing-name inputs so linking a recipe's ingredients to the cost DB doesn't
+     interrupt writing the recipe. */
+  .recipe-combo{ position: relative; }
+  .ing-link-combo{ position: relative; flex: 1 1 auto; min-width: 0; }
+  .combo-toggle{ flex: 0 0 auto; padding: 10px 14px; font-size: 12px; }
+  .combo-dropdown{
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 10px;
+    max-height: 240px; overflow-y: auto; box-shadow: var(--shadow-pop);
+  }
+  /* The ingredient-link combo can sit in a narrow cell next to the (up to 40%-wide) name
+     label — anchor its dropdown to the left edge with its own minimum width instead of
+     letting it get squeezed narrow enough to wrap candidate names one character per line. */
+  .ing-link-combo .combo-dropdown{ right: auto; min-width: 200px; max-width: min(280px, 90vw); }
+  .combo-dropdown-item{
+    display: block; width: 100%; text-align: left; min-height: 44px;
+    padding: 10px 14px; border: none; border-bottom: 1px solid var(--border);
+    background: none; font-family: var(--font-body); font-size: 14.5px; color: var(--ink);
+    cursor: pointer; word-break: keep-all;
+  }
+  .combo-dropdown-item:last-child{ border-bottom: none; }
+  .combo-dropdown-item:hover, .combo-dropdown-item:focus-visible{
+    background: var(--accent-soft); outline: none;
+  }
+  .combo-dropdown-item.combo-add-new{ color: var(--accent); font-weight: 700; }
+  .combo-dropdown-empty{ padding: 10px 14px; font-size: 13px; color: var(--ink-soft); }
+
+  /* Subpage (재료 관리 / 원가 계산): the first true "leaves the calculator" screens in this
+     file — unlike the small popovers above, these fully replace the calculator instead of
+     floating over it. No dimmed backdrop since there's nothing left behind to dim: opening
+     one hides .wrap/.footer outright (see showSubpage()/hideSubpage()) and this fills that
+     same space, capped at the same width as .wrap for visual consistency with the calculator. */
+  .subpage{
+    position: fixed; inset: 0; z-index: 50; overflow-y: auto;
+    background: var(--bg);
+  }
+  .subpage-header{
+    position: sticky; top: 0; z-index: 1;
+    padding: 16px 18px; border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .subpage-header-inner{
+    display: flex; align-items: center; gap: 10px;
+    max-width: 580px; margin: 0 auto;
+  }
+  .subpage-header h2{
+    margin: 0; font-family: var(--font-display); font-size: 15px; font-weight: 800;
+    color: var(--ink);
+  }
+  .subpage-body{ padding: 18px; max-width: 580px; margin: 0 auto; }
+  .subpage-body h3{
+    font-family: var(--font-display); font-size: 13px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+    margin: 18px 0 10px;
+  }
+  .subpage-body h3:first-of-type{ margin-top: 0; }
+  #costRecipeNameHeading{
+    font-family: var(--font-display); font-size: 17px; font-weight: 800;
+    text-transform: none; letter-spacing: normal; color: var(--ink); margin: 0 0 10px;
+  }
+  .cost-recipe-combo{ position: relative; }
+
+  /* 원가 계산 모달의 재료 연결 목록: 이름(레시피 그대로, 읽기 전용) + 재료DB 링크 콤보. */
+  .cost-ing-row{
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .cost-ing-row:last-of-type{ border-bottom: none; }
+  .cost-ing-name{
+    flex: 0 0 auto; max-width: 40%; font-weight: 700; font-size: 14.5px;
+    color: var(--ink); overflow-wrap: break-word;
+  }
+  .cost-ing-price{
+    flex: 1 1 100%; font-family: var(--font-mono); font-size: 12px;
+    color: var(--ink-soft); text-align: right;
+  }
+  .cost-ing-category{
+    display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 6px;
+    background: var(--bg-elevated); color: var(--ink-soft);
+    font-size: 10.5px; font-weight: 600; vertical-align: middle;
+  }
+  .cost-ing-suggestion{
+    flex: 1 1 100%; display: flex; align-items: center; justify-content: flex-end;
+    gap: 6px; font-size: 12.5px; color: var(--ink-soft);
+  }
+  .cost-ing-suggestion-btn{
+    background: none; border: none; padding: 2px 4px; color: var(--accent);
+    font-weight: 700; font-size: 12.5px; cursor: pointer; text-decoration: underline;
+  }
+  .ing-link-input{
+    width: 100%; display: block; font-family: var(--font-body); font-size: 14px;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 9px 10px; min-height: 40px; color: var(--ink);
+  }
+  .ing-link-input[data-unresolved]{ border-color: var(--danger); }
+
+  /* Sticky footer stamp */
+  .footer{
+    position: fixed; left:0; right:0; bottom:0;
+    background: var(--bg-elevated); color: var(--ink);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; align-items:center; gap:14px;
+    border-top: 1px solid var(--border);
+    box-shadow: var(--shadow-footer);
+  }
+  .footer-inner{ max-width: 580px; margin: 0 auto; width:100%; display:flex; align-items:center; gap:14px; }
+  .stamp{
+    flex: 0 0 auto; width: 78px; height: 78px; border-radius: 50%;
+    border: 3px solid var(--accent); color: var(--accent);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background: var(--accent-soft);
+  }
+  .stamp .num{ font-family: var(--font-mono); font-weight: 900; font-size: 20px; line-height:1; }
+  .stamp .u{ font-family: var(--font-mono); font-size: 9px; letter-spacing:0.06em; margin-top:2px; }
+  .footer-text{ flex:1; min-width:0; }
+  .footer-label{ font-size: 11px; letter-spacing:0.06em; text-transform:uppercase; color: var(--ink-soft); }
+  .footer-value{ font-family: var(--font-mono); font-weight: 800; font-size: 21px; margin-top:2px; }
+  .footer-dirty{ font-size: 11.5px; color: var(--accent); margin-top: 4px; font-weight: 700; }
+  .copy-btn{
+    flex: 0 0 auto; background: var(--accent); color: #fff; border:none;
+    padding: 12px 14px; border-radius: 10px; font-family: var(--font-display);
+    font-weight: 800; font-size: 13px; cursor:pointer; min-height: 44px;
+  }
+  .copy-btn:active{ transform: scale(0.97); }
+  .copy-btn.copied{ background: var(--success); color:#fff; }
+
+  .toast{
+    position: fixed; left:50%; bottom: 150px; transform: translateX(-50%);
+    background: var(--bg-elevated); color: var(--ink); border: 1px solid var(--border-strong);
+    padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; font-weight:700; opacity:0; pointer-events:none;
+    box-shadow: var(--shadow-pop);
+    transition: opacity 0.25s ease;
+  }
+  .toast.show{ opacity: 1; }
+
+  @media (max-width: 360px){
+    .pct-cell{ flex-basis: 52px; }
+    .weight-cell{ flex-basis: 92px; }
+    .reorder-btns{ flex-basis: 26px; }
+    h1{ font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="header-row">
+      <div>
+        <p class="eyebrow">MINO · 계량 도구 · 내 계정</p>
+        <h1>제빵 계산기</h1>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn theme-toggle" id="themeToggleBtn" aria-label="화면 모드 전환">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <line x1="12" y1="2" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="22"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="2" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="22" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+          </svg>
+        </button>
+        <div class="account-chip-wrap">
+          <button class="icon-btn account-chip" id="accountChipBtn" aria-label="로그인">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <div class="account-menu" id="accountMenu" style="display:none;">
+            <div id="authRow">
+              <!-- Kakao login button removed 2026-07-24 — Supabase always requests the
+                   account_email scope for Kakao (can't be overridden client-side), and this
+                   Kakao app can't grant that scope without completing 비즈니스 인증. Re-add
+                   once that's done: see 2026-07-24_계정레시피공유_작업기록.md. -->
+              <button class="menu-btn" id="googleBtn">Google로 로그인</button>
+            </div>
+            <div id="loggedInRow" style="display:none;">
+              <button class="menu-btn" id="manageIngredientsBtn">재료 관리</button>
+              <button class="menu-btn" id="openCostCalcBtn">원가 계산</button>
+              <button class="menu-btn" id="openCompositeProductsBtn">조합 제품</button>
+              <button class="menu-btn" id="logoutBtn">로그아웃</button>
+            </div>
+            <p class="hint" id="authHint" style="display:none;"></p>
+            <p class="hint" style="margin-top:8px;"><a href="terms.html" style="color:var(--ink-soft);">이용약관 및 개인정보처리방침</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="sub" id="subText">구글 계정으로 로그인해서 내 레시피를 저장하고 공유해요.</p>
+    <p class="hint" id="sharedBanner" style="display:none;">공유된 레시피를 읽기 전용으로 보고 있어요. 저장하려면 본인 계정으로 로그인한 뒤 새로 저장해주세요.</p>
+  </header>
+
+  <section class="card recipe-toolbar">
+    <div class="toolbar-icons">
+      <input class="recipe-name" id="recipeName" value="기본 바게트 반죽" aria-label="레시피 이름">
+      <div class="account-chip-wrap" id="newRecipeWrap">
+        <button class="icon-btn" id="newRecipeBtn" aria-label="새 레시피 만들기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+        <div class="account-menu" id="newRecipeMenu" style="display:none;">
+          <button class="menu-btn" id="newBreadBtn">제빵 (베이커스 %)</button>
+          <button class="menu-btn" id="newConfectionBtn">제과 (절대 중량)</button>
+          <button class="menu-btn" id="newOtherBtn">기타 (절대 중량)</button>
+        </div>
+      </div>
+      <button class="icon-btn" id="saveBtn" aria-label="레시피 저장" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <div id="libraryCard" style="display:none;">
+      <div class="toolbar-divider"></div>
+      <div class="recipe-combo">
+        <div class="field-row">
+          <input type="text" id="recipeSearchInput" class="text-input" autocomplete="off" placeholder="레시피 검색해서 불러오기" aria-label="레시피 검색 및 불러오기">
+          <button type="button" class="io-btn combo-toggle" id="recipeDropdownToggle" aria-label="레시피 목록 열기/닫기">▾</button>
+        </div>
+        <div class="combo-dropdown" id="recipeDropdown" style="display:none;"></div>
+      </div>
+      <p class="hint" id="libraryEmptyHint" style="display:none;">아직 저장된 레시피가 없어요. 위에서 이름을 적고 저장해보세요.</p>
+    </div>
+  </section>
+
+  <div class="mode-toggle" role="group" aria-label="계산 모드 선택">
+    <button class="mode-btn" id="modeABtn" aria-pressed="true">
+      배율 조정
+      <span class="tag">기준량 × 배수</span>
+    </button>
+    <button class="mode-btn" id="modeBBtn" aria-pressed="false">
+      총 반죽량 기준
+      <span class="tag">목표 무게 역산</span>
+    </button>
+  </div>
+
+  <section class="card" id="modeAPanel">
+    <h2>기준 밀가루량 &amp; 배율</h2>
+    <div class="field-row" id="baseFlourRow">
+      <span class="field-label">기준 밀가루</span>
+      <input type="number" inputmode="decimal" id="baseFlour" value="1000" min="0" step="10">
+      <span class="unit">g</span>
+    </div>
+    <div class="pmpm">
+      <button id="multMinus" aria-label="배율 줄이기">−</button>
+      <input type="number" inputmode="decimal" id="multInput" value="2" step="0.1" min="0.1" style="max-width:100px;">
+      <button id="multPlus" aria-label="배율 늘리기">+</button>
+      <span class="unit">배</span>
+    </div>
+    <p class="hint" id="modeAHint">기준 밀가루량에 배율을 곱해 전체 반죽을 스케일합니다.</p>
+  </section>
+
+  <section class="card" id="modeBPanel" style="display:none;">
+    <h2>목표 총 반죽량</h2>
+    <div class="field-row">
+      <span class="field-label">총 반죽량</span>
+      <input type="number" inputmode="decimal" id="targetTotal" value="3000" min="0" step="10">
+      <span class="unit">g</span>
+    </div>
+    <p class="hint" id="modeBHint">원하는 총 무게를 입력하면 재료 비율에 맞춰 밀가루량을 역산합니다.</p>
+
+    <div id="portionList"></div>
+    <button class="add-btn" id="addPortionBtn">+ 반죽 분할 추가</button>
+    <p class="hint" id="portionSumHint" style="display:none;">
+      분할 합계 <span id="portionSum">0</span>g가 총 반죽량에 반영돼요 (직접 입력 비활성화)
+    </p>
+  </section>
+
+  <section class="card" id="flourCard">
+    <h2>밀가루 (합계 100%)</h2>
+    <div id="flourList"></div>
+    <button class="add-btn" id="addFlourBtn">+ 밀가루 종류 추가</button>
+    <p class="hint warn-hint" id="flourPctWarning" style="display:none;">
+      밀가루 비율 합계가 100%가 아니에요 (현재 <span id="flourPctSum">100</span>%)
+    </p>
+  </section>
+
+  <section class="card">
+    <h2 id="ingCardTitle">재료 (밀가루 기준 %)</h2>
+    <div id="ingList"></div>
+    <button class="add-btn" id="addIngBtn">+ 재료 추가</button>
+    <p class="hint" id="ingHint">퍼센트나 중량, 편한 쪽을 입력하면 서로 자동 계산돼요.</p>
+    <div id="pctInfoBlock">
+      <p class="hint">
+        베이커스 퍼센트가 처음이신가요?
+        <button class="link" id="pctInfoBtn">퍼센트란?</button>
+      </p>
+      <p class="hint" id="pctInfo" style="display:none;">
+        밀가루 무게를 100%로 두고, 다른 재료는 밀가루 대비 비율(%)로 표시하는 방식이에요.
+        예: 수분율 65% = 밀가루 1000g일 때 물 650g.
+      </p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>메모</h2>
+    <textarea id="notesInput" class="notes-input" rows="4" placeholder="발효 시간, 굽기 팁처럼 남겨두고 싶은 메모를 적어보세요."></textarea>
+    <div class="toolbar-icons" style="margin-top:12px;">
+      <button class="icon-btn" id="saveBtnBottom" aria-label="레시피 저장" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"></path>
+          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+          <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+      </button>
+      <button class="icon-btn" id="shareSelectedBtn" aria-label="공유" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      </button>
+      <button class="icon-btn danger" id="deleteSelectedBtn" aria-label="삭제" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="share-panel" id="selectedSharePanel" style="display:none;">
+      <div class="field-row">
+        <span class="field-label">링크 공유</span>
+        <button class="io-btn" id="toggleLinkBtn">링크 켜기</button>
+      </div>
+      <div class="link-row" id="linkRow" style="display:none;">
+        <p class="hint link-url" id="linkUrlText"></p>
+        <button class="io-btn" id="copyLinkBtn">복사</button>
+      </div>
+    </div>
+  </section>
+
+  <!--
+    2026-07-25: manual ad unit removed after an AdSense policy-violation notice
+    ("게시자 콘텐츠가 없는 화면에 광고 게재") during site review — data-ad-slot was still the
+    YOUR-AD-SLOT-ID placeholder (no ad unit had been created yet), so this block was pushing
+    an invalid slot on every load. Auto ads (the <head> loader script) is left in place and
+    needs no slot ID; it can place ads itself once the site is approved. If a real ad unit
+    gets created later and a manual placement is wanted again here, re-add this block with
+    a real data-ad-slot value rather than restoring this comment's placeholder.
+  -->
+</div>
+
+<div class="footer">
+  <div class="footer-inner">
+    <div class="stamp">
+      <span class="num" id="stampTotal">0</span>
+      <span class="u">TOTAL g</span>
+    </div>
+    <div class="footer-text">
+      <div class="footer-label" id="footerFlourLabel">밀가루 합계 <span id="flourWeightLabel">0g</span> 기준</div>
+      <div class="footer-label" id="footerScaleLabel" style="display:none;">적용 배율 <span id="engineScaleLabel">×1</span></div>
+      <div class="footer-value" id="totalWeightText">0g</div>
+      <div class="footer-dirty" id="footerDirtyHint" style="display:none;">● 저장 안 된 변경사항 있음</div>
+    </div>
+    <button class="copy-btn" id="copyBtn">결과 복사</button>
+  </div>
+</div>
+<div class="toast" id="toast">복사되었습니다</div>
+
+<!--
+  재료 관리 서브페이지 — .wrap 바깥, 계산기 화면(.wrap/.footer)을 아예 숨기고 그 자리를
+  통째로 차지하도록 body 직속으로 둔다(showSubpage()/hideSubpage() 참조). 배경을 가리는
+  모달이 아니라 "다른 페이지로 이동"하는 느낌을 주기 위한 선택 — 계정 메뉴/레시피 검색
+  드롭다운 같은 작은 팝오버들과는 성격이 다르다.
+-->
+<div class="subpage" id="ingredientManagerPage" style="display:none;">
+  <div class="subpage-header">
+    <div class="subpage-header-inner">
+      <button class="icon-btn" id="closeIngredientManagerBtn" aria-label="계산기로 돌아가기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <h2>재료 관리</h2>
+    </div>
+  </div>
+  <div class="subpage-body">
+    <p class="hint warn-hint" id="ingredientManagerUnpricedHint" style="display:none;"></p>
+    <input type="text" id="ingredientManagerSearch" class="text-input" autocomplete="off" placeholder="이름/카테고리로 검색" style="width:100%;margin-bottom:14px;">
+    <!-- Pinned above the list (not below it) so adding a new ingredient never requires
+         scrolling past however long the list has grown — only finding the just-added row
+         afterward needs a scroll, which the click handler does automatically. -->
+    <button class="add-btn" id="addIngredientMasterBtn" style="margin-top:0;margin-bottom:14px;">+ 재료 추가</button>
+    <div id="ingredientManagerList"></div>
+    <p class="hint">구매량과 가격을 입력하면 g당 단가가 자동으로 계산돼요. "개" 단위는 무게로 환산할 수 없어서 아직 원가 계산에는 반영되지 않아요. ml/l은 밀도를 1(물 기준)로 가정해요.</p>
+  </div>
+</div>
+
+<!--
+  원가 계산 서브페이지 — 레시피 작성 화면과 완전히 분리된 별도 화면. 재료 이름(레시피에 쓰인
+  그대로, 예: "버터")과 원가 계산용 재료DB 연결(예: "앵커버터")은 여기서만 다룬다 — 레시피
+  편집 화면의 재료 이름 칸은 이 연결과 무관하게 항상 그대로 표시된다.
+-->
+<div class="subpage" id="costCalcPage" style="display:none;">
+  <div class="subpage-header">
+    <div class="subpage-header-inner">
+      <button class="icon-btn" id="closeCostCalcBtn" aria-label="계산기로 돌아가기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <h2>원가 계산</h2>
+    </div>
+  </div>
+  <div class="subpage-body">
+    <div class="cost-recipe-combo">
+      <div class="field-row">
+        <input type="text" id="costRecipeSearchInput" class="text-input" autocomplete="off" placeholder="레시피 검색해서 불러오기" aria-label="레시피 검색">
+        <button type="button" class="io-btn combo-toggle" id="costRecipeDropdownToggle" aria-label="레시피 목록 열기/닫기">▾</button>
+      </div>
+      <div class="combo-dropdown" id="costRecipeDropdown" style="display:none;"></div>
+    </div>
+    <p class="hint" id="costNoRecipeHint">레시피를 선택하면 재료 연결과 원가를 확인할 수 있어요.</p>
+    <div id="costCalcBody" style="display:none;">
+      <h3 id="costRecipeNameHeading"></h3>
+      <p class="hint" id="costCostPerGramHint">이 레시피의 g당 원가: 0원/g</p>
+      <p class="hint warn-hint" id="costUnpricedHint" style="display:none;">일부 재료의 단가가 없어 원가가 정확하지 않을 수 있어요.</p>
+      <div id="costIngredientsList"></div>
+      <div class="toolbar-divider"></div>
+      <h3>제품 &amp; 원가</h3>
+      <p class="hint">이 레시피로 실제 파는 단위(예: "휘낭시에 30g")를 등록하면, 위에서 계산된 g당 원가로 개당 원가와 판매가 대비 마진을 자동으로 보여줘요.</p>
+      <div id="costProductsList"></div>
+      <button class="add-btn" id="addProductBtn">+ 제품 추가</button>
+    </div>
+  </div>
+</div>
+
+<!--
+  조합 제품 서브페이지 — 레시피 하나에 속하지 않는 제품(예: 소보로빵 = 소보로 반죽 + 빵 반죽,
+  서로 다른 레시피 두 개를 합친 것)을 위한 별도 화면. "제품 & 원가"(레시피 하나 : 제품 여러
+  개)와는 별개 — 저 화면은 그대로 두고 이건 완전히 새로운 개념으로 추가한다.
+-->
+<div class="subpage" id="compositeProductsPage" style="display:none;">
+  <div class="subpage-header">
+    <div class="subpage-header-inner">
+      <button class="icon-btn" id="closeCompositeProductsBtn" aria-label="계산기로 돌아가기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <h2>조합 제품</h2>
+    </div>
+  </div>
+  <div class="subpage-body">
+    <p class="hint">서로 다른 레시피를 합쳐서 만드는 제품(예: 소보로빵 = 소보로 반죽 + 빵 반죽)을 등록하면, 각 구성요소의 g당 원가를 자동으로 더해서 전체 원가와 마진을 보여줘요.</p>
+    <button class="add-btn" id="addCompositeProductBtn" style="margin-top:0;margin-bottom:14px;">+ 조합 제품 추가</button>
+    <div id="compositeProductsList"></div>
+  </div>
+</div>
+
+<!--
+  This page's account/save/share features need a live login+database round trip, so —
+  unlike index.html/manager.html, which stay dependency-free for spotty bakery-floor wifi —
+  it deliberately loads the Supabase client from a CDN. See CLAUDE.md and
+  supabase/schema.sql for why this is scoped to this one page only.
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  // Light/dark toggle: :root holds the dark theme (this app's default); a `data-theme`
+  // attribute on <html> switches to the light override block in <style>. This is the one
+  // deliberate exception to "no localStorage" — it's a display preference, not recipe
+  // data, so it's fine for it to survive a refresh even though nothing else does.
+  var THEME_KEY = 'mino-theme';
+  var themeToggleBtn = document.getElementById('themeToggleBtn');
+  var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환');
+    themeColorMeta.setAttribute('content', theme === 'dark' ? '#0B0C0E' : '#F5F6F8');
+  }
+  applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
+  themeToggleBtn.addEventListener('click', function(){
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+
+  var state = {
+    mode: 'A',
+    type: 'bread', // 'bread' (engine A: baker's %) | 'confection' | 'other' (engine B: absolute weight)
+    flours: [
+      { ingredientId: null, name: '밀가루', pct: 100 }
+    ],
+    baseFlour: 1000,
+    multiplier: 2,
+    targetTotal: 3000,
+    portions: [],
+    ingredients: [
+      { ingredientId: null, name: '물', pct: 65 },
+      { ingredientId: null, name: '소금', pct: 2 },
+      { ingredientId: null, name: '이스트', pct: 1 }
+    ]
+  };
+
+  var flourListEl = document.getElementById('flourList');
+  var ingListEl = document.getElementById('ingList');
+  var portionListEl = document.getElementById('portionList');
+  var portionSumHintEl = document.getElementById('portionSumHint');
+  var portionSumEl = document.getElementById('portionSum');
+  var flourCardEl = document.getElementById('flourCard');
+  var flourPctWarningEl = document.getElementById('flourPctWarning');
+  var flourPctSumEl = document.getElementById('flourPctSum');
+  var modeABtn = document.getElementById('modeABtn');
+  var modeBBtn = document.getElementById('modeBBtn');
+  var modeAPanel = document.getElementById('modeAPanel');
+  var modeBPanel = document.getElementById('modeBPanel');
+  var baseFlourInput = document.getElementById('baseFlour');
+  var multInput = document.getElementById('multInput');
+  var targetTotalInput = document.getElementById('targetTotal');
+  var stampTotal = document.getElementById('stampTotal');
+  var totalWeightText = document.getElementById('totalWeightText');
+  var flourWeightLabel = document.getElementById('flourWeightLabel');
+  var toastEl = document.getElementById('toast');
+  var recipeNameInput = document.getElementById('recipeName');
+  var notesInput = document.getElementById('notesInput');
+  var baseFlourRowEl = document.getElementById('baseFlourRow');
+  var modeAHintEl = document.getElementById('modeAHint');
+  var modeBHintEl = document.getElementById('modeBHint');
+  var ingCardTitleEl = document.getElementById('ingCardTitle');
+  var ingHintEl = document.getElementById('ingHint');
+  var pctInfoBlockEl = document.getElementById('pctInfoBlock');
+  var footerFlourLabelEl = document.getElementById('footerFlourLabel');
+  var footerScaleLabelEl = document.getElementById('footerScaleLabel');
+  var engineScaleLabelEl = document.getElementById('engineScaleLabel');
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(function(){ toastEl.classList.remove('show'); }, 1600);
+  }
+
+  function roundWeight(g){
+    if (g < 10) return Math.round(g * 10) / 10;
+    return Math.round(g);
+  }
+  function fmt(g){
+    var r = roundWeight(g);
+    return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(1));
+  }
+
+  function computeFlourWeight(){
+    if (state.mode === 'A'){
+      return state.baseFlour * state.multiplier;
+    } else {
+      var totalPct = 100 + state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.pct)||0); }, 0);
+      return state.targetTotal / (totalPct/100);
+    }
+  }
+
+  // Engine B (confection/other) has no flour bucket to anchor off — each ingredient's
+  // stored `weight` is its amount at scale=1, and the displayed number is that times a
+  // scale factor: the multiplier directly in Mode A, or targetTotal/currentTotal in Mode B.
+  function computeEngineBScale(){
+    if (state.mode === 'A') return state.multiplier;
+    var total = state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.weight)||0); }, 0);
+    return total > 0 ? state.targetTotal / total : 0;
+  }
+
+  function pctFromWeight(weight, flourWeight){
+    if (!flourWeight) return 0;
+    return roundPct((parseFloat(weight)||0) / flourWeight * 100);
+  }
+
+  // Weight↔% conversions produce float noise (e.g. 2.1999999999999997) that, left
+  // unrounded, makes the % field show a long digit string and visually clip in its
+  // narrow column. Round to 2 decimals — plenty of precision for a percentage, and
+  // clean enough to never overflow.
+  function roundPct(p){
+    return Math.round((parseFloat(p)||0) * 100) / 100;
+  }
+
+  // % / weight boxes are a fixed width, but recipes can scale up to numbers with far
+  // more digits than the box was sized for (e.g. a 26000g batch). Rather than clip the
+  // text, shrink the font as the value gets longer so it always stays fully visible.
+  // Also used for name fields (baseSize 14.5) since long ingredient names clip the same way.
+  function fitDigits(el, baseSize){
+    var base = baseSize || 15;
+    var len = (el.value || '').toString().length;
+    el.style.fontSize = len <= 4 ? '' : Math.max(10, base - (len - 4) * 1.2) + 'px';
+  }
+
+  function attachRefreshOnBlur(el){
+    el.addEventListener('blur', function(){ updateDisplays(); });
+  }
+
+  // App-wide: focusing any number field selects its current content, so typing a new value
+  // immediately replaces it instead of requiring "clear the 0 first, then type" every time.
+  // One delegated listener covers every numeric input on the page (recipe pct/weight, product
+  // weight/price/loss rate, ingredient purchase amount/price, etc.) without needing to wire it
+  // up per field — including ones that don't exist yet when the page first loads.
+  document.addEventListener('focusin', function(e){
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') e.target.select();
+  });
+
+  // With a single flour type, its % is trivially 100 (nothing to split with) — editing its
+  // weight is really editing the recipe's total flour weight, so drive that anchor instead
+  // (baseFlour in Mode A, targetTotal in Mode B) rather than treating it as a % of itself.
+  function setTotalFlourWeight(target){
+    if (state.mode === 'A'){
+      state.baseFlour = state.multiplier ? target / state.multiplier : target;
+      baseFlourInput.value = fmt(state.baseFlour);
+    } else {
+      var totalPct = 100 + state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.pct)||0); }, 0);
+      state.targetTotal = target * (totalPct/100);
+      targetTotalInput.value = fmt(state.targetTotal);
+    }
+  }
+
+  // Full structural rebuild: only needed when rows are added/removed, or on first load.
+  function render(){
+    buildFlourRows();
+    buildIngRows();
+    buildPortionRows();
+    updateDisplays();
+  }
+
+  // Mode B can build up the target total from several dough portions — e.g. "200g × 130개"
+  // for a batch of identically-sized units — instead of one number. Whenever any portions
+  // exist, their summed (weight × qty) is the source of truth for state.targetTotal and the
+  // plain input becomes a readonly display of that sum.
+  function portionSubtotal(p){
+    return (parseFloat(p.weight)||0) * (parseFloat(p.qty)||0);
+  }
+  function syncTargetTotalFromPortions(){
+    if (state.portions.length > 0){
+      state.targetTotal = state.portions.reduce(function(s,p){ return s + portionSubtotal(p); }, 0);
+    }
+    targetTotalInput.readOnly = state.portions.length > 0;
+  }
+
+  function buildPortionRows(){
+    portionListEl.innerHTML = '';
+    state.portions.forEach(function(p, idx){
+      var row = document.createElement('div');
+      row.className = 'portion-row';
+      row.innerHTML =
+        '<input class="portion-weight" type="number" inputmode="decimal" step="10" value="' + p.weight + '" data-idx="' + idx + '" aria-label="분할 무게" placeholder="분할g">' +
+        '<span class="portion-sep">g ×</span>' +
+        '<input class="portion-qty" type="number" inputmode="decimal" step="1" value="' + p.qty + '" data-idx="' + idx + '" aria-label="수량" placeholder="수량">' +
+        '<span class="portion-sep">개 =</span>' +
+        '<span class="portion-subtotal" data-idx="' + idx + '">' + fmt(portionSubtotal(p)) + 'g</span>' +
+        '<button class="del-btn" data-idx="' + idx + '" aria-label="분할 삭제">×</button>';
+      portionListEl.appendChild(row);
+    });
+
+    portionListEl.querySelectorAll('.portion-weight[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.portions[+el.dataset.idx].weight = parseFloat(el.value) || 0;
+        syncTargetTotalFromPortions();
+        updateDisplays();
+      });
+    });
+    portionListEl.querySelectorAll('.portion-qty[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        state.portions[+el.dataset.idx].qty = parseFloat(el.value) || 0;
+        syncTargetTotalFromPortions();
+        updateDisplays();
+      });
+    });
+    portionListEl.querySelectorAll('.del-btn[data-idx]').forEach(function(el){
+      el.addEventListener('click', function(){
+        state.portions.splice(+el.dataset.idx, 1);
+        syncTargetTotalFromPortions();
+        render();
+      });
+    });
+  }
+
+  function buildFlourRows(){
+    flourListEl.innerHTML = '';
+    state.flours.forEach(function(fl, idx){
+      var row = document.createElement('div');
+      row.className = 'ing-row flour-row';
+      var singleFlour = state.flours.length === 1;
+      row.innerHTML =
+        '<input class="ing-name" value="' + escapeHtml(fl.name) + '" data-idx="' + idx + '" aria-label="밀가루 이름">' +
+        '<div class="ing-row-numbers">' +
+          '<span class="pct-cell"><input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + roundPct(fl.pct) + '" data-idx="' + idx + '" aria-label="밀가루 비율"' + (singleFlour ? ' readonly' : '') + '><span class="pct-unit">%</span></span>' +
+          '<span class="weight-cell"><input class="weight-input" type="number" inputmode="decimal" step="1" data-idx="' + idx + '" aria-label="밀가루 중량"><span class="weight-unit">g</span></span>' +
+          (state.flours.length > 1
+            ? '<button class="del-btn" data-idx="' + idx + '" aria-label="밀가루 삭제">×</button>'
+            : '') +
+        '</div>';
+      flourListEl.appendChild(row);
+    });
+
+    flourListEl.querySelectorAll('.ing-name[data-idx]').forEach(function(el){
+      fitDigits(el, 14.5);
+      el.addEventListener('input', function(){
+        state.flours[+el.dataset.idx].name = el.value;
+        fitDigits(el, 14.5);
+      });
+    });
+    flourListEl.querySelectorAll('.pct-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        if (state.flours.length === 1) return; // % is pinned to 100 with a single flour type
+        state.flours[+el.dataset.idx].pct = el.value;
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    flourListEl.querySelectorAll('.weight-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        // Editing one flour's weight in grams means "this type weighs X" — the other
+        // flour types keep their current gram amounts, so the total (and hence each
+        // type's %) is recomputed from the sum of grams, not from a fixed total split.
+        var idx = +el.dataset.idx;
+        var flourWeight = computeFlourWeight();
+        var weights = state.flours.map(function(f, i){
+          return i === idx ? (parseFloat(el.value) || 0) : flourWeight * (parseFloat(f.pct)||0) / 100;
+        });
+        var newTotal = weights.reduce(function(s,w){ return s + w; }, 0);
+        state.flours.forEach(function(f, i){
+          f.pct = pctFromWeight(weights[i], newTotal);
+        });
+        setTotalFlourWeight(newTotal);
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    flourListEl.querySelectorAll('.del-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        if (state.flours.length > 1){
+          state.flours.splice(+el.dataset.idx, 1);
+          if (state.flours.length === 1) state.flours[0].pct = 100;
+          render();
+        }
+      });
+    });
+  }
+
+  function buildIngRows(){
+    ingListEl.innerHTML = '';
+    var isBread = state.type === 'bread';
+    state.ingredients.forEach(function(ing, idx){
+      var row = document.createElement('div');
+      row.className = 'ing-row';
+      row.innerHTML =
+        '<input class="ing-name" value="' + escapeHtml(ing.name) + '" data-idx="' + idx + '" aria-label="재료 이름">' +
+        '<div class="ing-row-numbers">' +
+          (isBread
+            ? '<span class="pct-cell"><input class="pct-input" type="number" inputmode="decimal" step="0.1" value="' + roundPct(ing.pct) + '" data-idx="' + idx + '" aria-label="재료 비율"><span class="pct-unit">%</span></span>'
+            : '') +
+          '<span class="weight-cell"><input class="weight-input" type="number" inputmode="decimal" step="1" data-idx="' + idx + '" aria-label="재료 중량"><span class="weight-unit">g</span></span>' +
+          '<span class="reorder-btns">' +
+          '<button data-idx="' + idx + '" data-dir="-1" aria-label="위로 이동"' + (idx === 0 ? ' disabled' : '') + '>▲</button>' +
+          '<button data-idx="' + idx + '" data-dir="1" aria-label="아래로 이동"' + (idx === state.ingredients.length - 1 ? ' disabled' : '') + '>▼</button>' +
+          '</span>' +
+          '<button class="del-btn" data-idx="' + idx + '" aria-label="재료 삭제">×</button>' +
+        '</div>';
+      ingListEl.appendChild(row);
+    });
+
+    ingListEl.querySelectorAll('.ing-name[data-idx]').forEach(function(el){
+      fitDigits(el, 14.5);
+      el.addEventListener('input', function(){
+        state.ingredients[+el.dataset.idx].name = el.value;
+        fitDigits(el, 14.5);
+      });
+    });
+    if (isBread){
+      ingListEl.querySelectorAll('.pct-input[data-idx]').forEach(function(el){
+        el.addEventListener('input', function(){
+          state.ingredients[+el.dataset.idx].pct = el.value;
+          updateDisplays();
+        });
+        attachRefreshOnBlur(el);
+      });
+    }
+    ingListEl.querySelectorAll('.weight-input[data-idx]').forEach(function(el){
+      el.addEventListener('input', function(){
+        if (isBread){
+          var flourWeight = computeFlourWeight();
+          state.ingredients[+el.dataset.idx].pct = pctFromWeight(el.value, flourWeight);
+        } else {
+          var scale = computeEngineBScale();
+          var typed = parseFloat(el.value) || 0;
+          state.ingredients[+el.dataset.idx].weight = scale > 0 ? typed / scale : typed;
+        }
+        updateDisplays();
+      });
+      attachRefreshOnBlur(el);
+    });
+    ingListEl.querySelectorAll('.reorder-btns button').forEach(function(el){
+      el.addEventListener('click', function(){
+        var idx = +el.dataset.idx;
+        var newIdx = idx + (+el.dataset.dir);
+        if (newIdx < 0 || newIdx >= state.ingredients.length) return;
+        var tmp = state.ingredients[idx];
+        state.ingredients[idx] = state.ingredients[newIdx];
+        state.ingredients[newIdx] = tmp;
+        render();
+      });
+    });
+    ingListEl.querySelectorAll('.del-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        state.ingredients.splice(+el.dataset.idx, 1);
+        render();
+      });
+    });
+  }
+
+  // Lightweight refresh: recomputes derived numbers and writes them into existing
+  // DOM nodes (never rebuilds), so the field the user is actively typing in keeps focus.
+  function updateDisplays(){
+    markDirty(); // account.html-only addition: every real edit runs through here eventually
+    if (state.flours.length === 1) state.flours[0].pct = 100;
+    syncTargetTotalFromPortions();
+    if (state.portions.length > 0 && document.activeElement !== targetTotalInput){
+      targetTotalInput.value = fmt(state.targetTotal);
+    }
+    portionSumHintEl.style.display = state.portions.length > 0 ? 'block' : 'none';
+    portionSumEl.textContent = fmt(state.targetTotal);
+    state.portions.forEach(function(p, idx){
+      var subtotalEl = portionListEl.querySelector('.portion-subtotal[data-idx="' + idx + '"]');
+      if (subtotalEl) subtotalEl.textContent = fmt(portionSubtotal(p)) + 'g';
+      var pWeightEl = portionListEl.querySelector('.portion-weight[data-idx="' + idx + '"]');
+      var pQtyEl = portionListEl.querySelector('.portion-qty[data-idx="' + idx + '"]');
+      if (pWeightEl) fitDigits(pWeightEl);
+      if (pQtyEl) fitDigits(pQtyEl);
+    });
+
+    var total;
+    if (state.type === 'bread'){
+      var flourWeight = computeFlourWeight();
+      if (!isFinite(flourWeight) || flourWeight < 0) flourWeight = 0;
+
+      state.flours.forEach(function(fl, idx){
+        var w = flourWeight * (parseFloat(fl.pct)||0) / 100;
+        var pctEl = flourListEl.querySelector('.pct-input[data-idx="' + idx + '"]');
+        var wEl = flourListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
+        if (pctEl && document.activeElement !== pctEl) pctEl.value = roundPct(fl.pct);
+        if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+        if (pctEl) fitDigits(pctEl);
+        if (wEl) fitDigits(wEl);
+      });
+
+      state.ingredients.forEach(function(ing, idx){
+        var w = flourWeight * (parseFloat(ing.pct)||0) / 100;
+        var pctEl = ingListEl.querySelector('.pct-input[data-idx="' + idx + '"]');
+        var wEl = ingListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
+        if (pctEl && document.activeElement !== pctEl) pctEl.value = roundPct(ing.pct);
+        if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+        if (pctEl) fitDigits(pctEl);
+        if (wEl) fitDigits(wEl);
+      });
+
+      var flourPctSum = state.flours.reduce(function(s,f){ return s + (parseFloat(f.pct)||0); }, 0);
+      var flourWarn = Math.abs(flourPctSum - 100) > 0.05;
+      flourPctWarningEl.style.display = flourWarn ? 'block' : 'none';
+      flourPctSumEl.textContent = Math.round(flourPctSum * 10) / 10;
+      flourCardEl.classList.toggle('invalid', flourWarn);
+
+      total = flourWeight + state.ingredients.reduce(function(s,i){
+        return s + flourWeight * ((parseFloat(i.pct)||0)/100);
+      }, 0);
+      flourWeightLabel.textContent = fmt(flourWeight) + 'g';
+    } else {
+      var scale = computeEngineBScale();
+      state.ingredients.forEach(function(ing, idx){
+        var w = (parseFloat(ing.weight)||0) * scale;
+        var wEl = ingListEl.querySelector('.weight-input[data-idx="' + idx + '"]');
+        if (wEl && document.activeElement !== wEl) wEl.value = fmt(w);
+        if (wEl) fitDigits(wEl);
+      });
+      total = state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.weight)||0)*scale; }, 0);
+      // Bread's footer label shows the flour weight the numbers were derived from; engine B
+      // has no flour bucket, so its analogous "derivation basis" is the scale factor itself.
+      engineScaleLabelEl.textContent = '×' + (Math.round(scale * 100) / 100);
+    }
+
+    stampTotal.textContent = fmt(total);
+    totalWeightText.textContent = fmt(total) + 'g';
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // Engine switch: bread uses the baker's-% engine (flour card, %, base-flour field);
+  // confection/other use the absolute-weight engine (no flour bucket, just ingredient
+  // weights scaled by multiplier or target-total). Only toggles static card visibility/
+  // copy — buildIngRows()/updateDisplays() do the actual per-type rendering/math.
+  function applyEngineUI(){
+    var isBread = state.type === 'bread';
+    flourCardEl.style.display = isBread ? '' : 'none';
+    baseFlourRowEl.style.display = isBread ? '' : 'none';
+    modeAHintEl.textContent = isBread
+      ? '기준 밀가루량에 배율을 곱해 전체 반죽을 스케일합니다.'
+      : '전체 재료 무게에 배율을 곱해 스케일합니다.';
+    modeBHintEl.textContent = isBread
+      ? '원하는 총 무게를 입력하면 재료 비율에 맞춰 밀가루량을 역산합니다.'
+      : '입력한 재료 무게 비율을 유지한 채 목표 총량에 맞춰 스케일합니다.';
+    ingCardTitleEl.textContent = isBread ? '재료 (밀가루 기준 %)' : '재료 (절대 중량)';
+    ingHintEl.style.display = isBread ? '' : 'none';
+    pctInfoBlockEl.style.display = isBread ? '' : 'none';
+    footerFlourLabelEl.style.display = isBread ? '' : 'none';
+    footerScaleLabelEl.style.display = isBread ? 'none' : '';
+  }
+
+  // Mode toggle
+  function applyModeUI(){
+    modeABtn.setAttribute('aria-pressed', state.mode === 'A');
+    modeBBtn.setAttribute('aria-pressed', state.mode === 'B');
+    modeAPanel.style.display = state.mode === 'A' ? '' : 'none';
+    modeBPanel.style.display = state.mode === 'B' ? '' : 'none';
+  }
+  function setMode(m){
+    state.mode = m;
+    applyModeUI();
+    updateDisplays();
+  }
+  modeABtn.addEventListener('click', function(){ setMode('A'); });
+  modeBBtn.addEventListener('click', function(){ setMode('B'); });
+
+  // Mode A inputs
+  baseFlourInput.addEventListener('input', function(){
+    state.baseFlour = parseFloat(baseFlourInput.value) || 0;
+    updateDisplays();
+  });
+  multInput.addEventListener('input', function(){
+    state.multiplier = parseFloat(multInput.value) || 0;
+    updateDisplays();
+  });
+  document.getElementById('multMinus').addEventListener('click', function(){
+    state.multiplier = Math.max(0.1, Math.round((state.multiplier - 0.5)*10)/10);
+    multInput.value = state.multiplier;
+    updateDisplays();
+  });
+  document.getElementById('multPlus').addEventListener('click', function(){
+    state.multiplier = Math.round((state.multiplier + 0.5)*10)/10;
+    multInput.value = state.multiplier;
+    updateDisplays();
+  });
+
+  // Mode B input
+  targetTotalInput.addEventListener('input', function(){
+    state.targetTotal = parseFloat(targetTotalInput.value) || 0;
+    updateDisplays();
+  });
+
+  // Add dough portion (Mode B: sums weight × qty into the target total)
+  document.getElementById('addPortionBtn').addEventListener('click', function(){
+    state.portions.push({ weight: 0, qty: 1 });
+    render();
+    var rows = portionListEl.querySelectorAll('.portion-weight[data-idx]');
+    var last = rows[rows.length-1];
+    if (last){ last.focus(); last.select(); }
+  });
+
+  // Add flour type
+  document.getElementById('addFlourBtn').addEventListener('click', function(){
+    state.flours.push({ ingredientId: null, name: '밀가루', pct: 0 });
+    render();
+    var rows = flourListEl.querySelectorAll('.ing-name[data-idx]');
+    var last = rows[rows.length-1];
+    if (last){ last.focus(); last.select(); }
+  });
+
+  // Add ingredient
+  document.getElementById('addIngBtn').addEventListener('click', function(){
+    state.ingredients.push(state.type === 'bread' ? { ingredientId: null, name: '재료', pct: 0 } : { ingredientId: null, name: '재료', weight: 0 });
+    render();
+    var rows = ingListEl.querySelectorAll('.ing-name[data-idx]');
+    var last = rows[rows.length-1];
+    if (last){ last.focus(); last.select(); }
+  });
+
+  // Percent info toggle
+  document.getElementById('pctInfoBtn').addEventListener('click', function(){
+    var el = document.getElementById('pctInfo');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // Copy results
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var lines = [recipeNameInput.value, ''];
+    var total;
+    if (state.type === 'bread'){
+      var flourWeight = computeFlourWeight();
+      state.flours.forEach(function(fl){
+        var w = flourWeight * (parseFloat(fl.pct)||0) / 100;
+        lines.push(fl.name + '  ' + fmt(w) + 'g  (' + fl.pct + '%)');
+      });
+      state.ingredients.forEach(function(ing){
+        var w = flourWeight * (parseFloat(ing.pct)||0) / 100;
+        lines.push(ing.name + '  ' + fmt(w) + 'g  (' + ing.pct + '%)');
+      });
+      total = flourWeight + state.ingredients.reduce(function(s,i){
+        return s + flourWeight * ((parseFloat(i.pct)||0)/100);
+      }, 0);
+    } else {
+      var scale = computeEngineBScale();
+      state.ingredients.forEach(function(ing){
+        var w = (parseFloat(ing.weight)||0) * scale;
+        lines.push(ing.name + '  ' + fmt(w) + 'g');
+      });
+      total = state.ingredients.reduce(function(s,i){ return s + (parseFloat(i.weight)||0)*scale; }, 0);
+    }
+    lines.push('');
+    if (state.portions.length > 0){
+      lines.push('반죽 분할  ' + state.portions.map(function(p){ return fmt(p.weight) + 'g×' + p.qty + '개'; }).join(' + ') + '  =  ' + fmt(state.targetTotal) + 'g');
+    }
+    lines.push('총 반죽량  ' + fmt(total) + 'g');
+    var text = lines.join('\n');
+
+    var btn = document.getElementById('copyBtn');
+    var showCopyToast = function(){
+      showToast('복사되었습니다');
+      btn.textContent = '복사됨';
+      btn.classList.add('copied');
+      setTimeout(function(){ btn.textContent = '결과 복사'; btn.classList.remove('copied'); }, 1600);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(showCopyToast).catch(function(){
+        fallbackCopy(text); showCopyToast();
+      });
+    } else {
+      fallbackCopy(text); showCopyToast();
+    }
+  });
+
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  function copyToClipboard(text){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  // --- Supabase-backed personal recipe library + sharing ---
+  // This page is the account-based sibling of index.html/manager.html: instead of a shared
+  // recipe.json file, each user's recipes live in Supabase (Google login via Supabase Auth,
+  // storage/sharing via Postgres + RLS). See supabase/schema.sql for the table/policy/RPC
+  // definitions this code calls, and CLAUDE.md for why this page alone loads an external
+  // script. Replace the two constants below with your own Supabase project's values —
+  // the anon key is meant to be public; row-level security is what actually protects data.
+  var SUPABASE_URL = 'https://yavvgybctuirnoewnaoc.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhdnZneWJjdHVpcm5vZXduYW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MzMyNDYsImV4cCI6MjEwMDQwOTI0Nn0.UMoauNNx-50nsGUIFL5O_IgM_W2rGkKwBg992-uTmoQ';
+
+  var supabaseConfigured = SUPABASE_URL.indexOf('YOUR-PROJECT') === -1 && SUPABASE_ANON_KEY.indexOf('YOUR-ANON-KEY') === -1;
+  var supabase = (window.supabase && supabaseConfigured)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  var currentUser = null;
+  var myRecipes = []; // rows from `recipes`: own recipes + recipes shared with me (RLS-filtered)
+  var myIngredients = []; // rows from `ingredients`: this user's personal ingredient master list
+  var sharedViewToken = new URLSearchParams(location.search).get('share');
+
+  var accountChipBtn = document.getElementById('accountChipBtn');
+  var accountMenuEl = document.getElementById('accountMenu');
+  var googleBtn = document.getElementById('googleBtn');
+  var logoutBtn = document.getElementById('logoutBtn');
+  var newRecipeBtn = document.getElementById('newRecipeBtn');
+  var authHintEl = document.getElementById('authHint');
+  var saveBtn = document.getElementById('saveBtn');
+  var saveBtnBottom = document.getElementById('saveBtnBottom');
+  var footerDirtyHintEl = document.getElementById('footerDirtyHint');
+  var authRowEl = document.getElementById('authRow');
+  var loggedInRowEl = document.getElementById('loggedInRow');
+  var manageIngredientsBtn = document.getElementById('manageIngredientsBtn');
+  var ingredientManagerPageEl = document.getElementById('ingredientManagerPage');
+  var closeIngredientManagerBtn = document.getElementById('closeIngredientManagerBtn');
+  var ingredientManagerListEl = document.getElementById('ingredientManagerList');
+  var ingredientManagerSearchInput = document.getElementById('ingredientManagerSearch');
+  var ingredientManagerUnpricedHintEl = document.getElementById('ingredientManagerUnpricedHint');
+  var openCostCalcBtn = document.getElementById('openCostCalcBtn');
+  var costCalcPageEl = document.getElementById('costCalcPage');
+  var closeCostCalcBtn = document.getElementById('closeCostCalcBtn');
+  var costRecipeSearchInput = document.getElementById('costRecipeSearchInput');
+  var costRecipeDropdownEl = document.getElementById('costRecipeDropdown');
+  var costRecipeDropdownToggleBtn = document.getElementById('costRecipeDropdownToggle');
+  var costNoRecipeHintEl = document.getElementById('costNoRecipeHint');
+  var costCalcBodyEl = document.getElementById('costCalcBody');
+  var costRecipeNameHeadingEl = document.getElementById('costRecipeNameHeading');
+  var costCostPerGramHintEl = document.getElementById('costCostPerGramHint');
+  var costUnpricedHintEl = document.getElementById('costUnpricedHint');
+  var costIngredientsListEl = document.getElementById('costIngredientsList');
+  var costProductsListEl = document.getElementById('costProductsList');
+  var openCompositeProductsBtn = document.getElementById('openCompositeProductsBtn');
+  var compositeProductsPageEl = document.getElementById('compositeProductsPage');
+  var closeCompositeProductsBtn = document.getElementById('closeCompositeProductsBtn');
+  var compositeProductsListEl = document.getElementById('compositeProductsList');
+  var myCompositeProducts = []; // composite_products rows, each with a nested .composite_product_components array
+  var costModalRecipe = null; // independent working copy of whichever recipe is loaded in the cost-calc modal
+  var libraryCardEl = document.getElementById('libraryCard');
+  var libraryEmptyHintEl = document.getElementById('libraryEmptyHint');
+  var recipeSearchInput = document.getElementById('recipeSearchInput');
+  var recipeDropdownEl = document.getElementById('recipeDropdown');
+  var recipeDropdownToggleBtn = document.getElementById('recipeDropdownToggle');
+  var shareSelectedBtn = document.getElementById('shareSelectedBtn');
+  var deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  var selectedSharePanelEl = document.getElementById('selectedSharePanel');
+  var myProducts = []; // products rows for whichever recipe is currently loaded in the cost-calc modal
+  var toggleLinkBtn = document.getElementById('toggleLinkBtn');
+  var linkRowEl = document.getElementById('linkRow');
+  var linkUrlTextEl = document.getElementById('linkUrlText');
+  var copyLinkBtn = document.getElementById('copyLinkBtn');
+  var sharedBannerEl = document.getElementById('sharedBanner');
+  var subTextEl = document.getElementById('subText');
+
+  var selectedRecipeId = null; // id of the recipe currently loaded via the search box
+
+  // Unsaved-changes indicator: both save buttons sit as plain neutral icon-btns until
+  // something actually changes, then turn accent-filled (the same "primary" look used
+  // everywhere else in this app for "the highlighted action here") so it's obvious there's
+  // something to save. suppressDirtyTracking wraps the render() calls that fire when
+  // *loading* a recipe (applyRecipeRowToState/newRecipe) — those aren't user edits.
+  var isDirty = false;
+  var suppressDirtyTracking = false;
+  function updateDirtyUI(){
+    saveBtn.classList.toggle('primary', isDirty);
+    saveBtnBottom.classList.toggle('primary', isDirty);
+    // No point telling a signed-out visitor "you have unsaved changes" — there's nothing
+    // for them to save to yet, so this stays quiet until currentUser exists too.
+    footerDirtyHintEl.style.display = (isDirty && currentUser) ? 'block' : 'none';
+  }
+  function markDirty(){
+    if (suppressDirtyTracking || isDirty) return;
+    isDirty = true;
+    updateDirtyUI();
+  }
+  function markClean(){
+    isDirty = false;
+    updateDirtyUI();
+  }
+
+  function shareUrl(token){
+    return location.origin + location.pathname + '?share=' + token;
+  }
+
+  function serializeCurrentRecipe(){
+    return {
+      recipe_name: recipeNameInput.value || '이름 없는 레시피',
+      recipe_type: state.type,
+      mode: state.mode,
+      base_flour: state.baseFlour,
+      multiplier: state.multiplier,
+      target_total: state.targetTotal,
+      portions: state.portions,
+      flours: state.flours,
+      ingredients: state.ingredients,
+      notes: notesInput.value || ''
+    };
+  }
+
+  // Same shape as manager.html's applyRecipeToState(), but reading a Supabase row
+  // (snake_case columns) instead of a recipe.json entry (camelCase) — this account
+  // system starts fresh with its own schema, no recipe.json migration.
+  function applyRecipeRowToState(row){
+    recipeNameInput.value = row.recipe_name || '';
+    notesInput.value = row.notes || '';
+    state.type = (row.recipe_type === 'confection' || row.recipe_type === 'other') ? row.recipe_type : 'bread';
+    state.mode = row.mode === 'B' ? 'B' : 'A';
+    state.baseFlour = parseFloat(row.base_flour) || 0;
+    state.multiplier = parseFloat(row.multiplier) || 1;
+    state.targetTotal = parseFloat(row.target_total) || 0;
+    state.portions = (Array.isArray(row.portions) ? row.portions : []).map(function(p){
+      if (typeof p === 'number') return { weight: p, qty: 1 };
+      return { weight: parseFloat(p && p.weight) || 0, qty: parseFloat(p && p.qty) || 1 };
+    });
+    if (state.type === 'bread'){
+      state.flours = (Array.isArray(row.flours) ? row.flours : []).map(function(f){
+        return migrateIngredientRow({ ingredientId: (f && f.ingredientId) || null, name: String(f && f.name || ''), pct: roundPct(f && f.pct) });
+      });
+      if (state.flours.length === 0) state.flours = [{ ingredientId: null, name: '밀가루', pct: 100 }];
+      state.ingredients = (Array.isArray(row.ingredients) ? row.ingredients : []).map(function(i){
+        return migrateIngredientRow({ ingredientId: (i && i.ingredientId) || null, name: String(i && i.name || ''), pct: roundPct(i && i.pct) });
+      });
+    } else {
+      state.flours = [];
+      state.ingredients = (Array.isArray(row.ingredients) ? row.ingredients : []).map(function(i){
+        return migrateIngredientRow({ ingredientId: (i && i.ingredientId) || null, name: String(i && i.name || ''), weight: parseFloat(i && i.weight) || 0 });
+      });
+    }
+
+    baseFlourInput.value = state.baseFlour;
+    multInput.value = state.multiplier;
+    targetTotalInput.value = state.targetTotal;
+
+    applyModeUI();
+    applyEngineUI();
+    suppressDirtyTracking = true;
+    render();
+    suppressDirtyTracking = false;
+    markClean();
+  }
+
+  function loadMyRecipes(){
+    supabase.from('recipes').select('*').order('updated_at', { ascending: false }).then(function(res){
+      if (res.error){ alert('레시피 목록을 불러오지 못했어요: ' + res.error.message); return; }
+      myRecipes = res.data || [];
+      libraryEmptyHintEl.style.display = myRecipes.length ? 'none' : 'block';
+      // Keep the selected recipe's panel (share token, owner badge) in sync after a
+      // save/delete/share round trip, instead of silently going stale.
+      if (selectedRecipeId){
+        var stillThere = myRecipes.find(function(r){ return r.id === selectedRecipeId; });
+        if (stillThere) renderSelectedRecipe(stillThere);
+        else clearSelectedRecipe();
+      }
+    });
+  }
+
+  // 'ea' (개수) isn't weight-convertible, so its price-per-gram is left at 0 — the
+  // ingredient manager shows a plain "개당 단가" note instead of a g-based number for it.
+  // ml/l assume a density of 1 (1ml = 1g) as a deliberate simplification.
+  function gramsPerPurchaseUnit(unitType){
+    return { g: 1, kg: 1000, ml: 1, l: 1000 }[unitType] || 0;
+  }
+  function computePricePerGram(amount, unitType, price){
+    if (unitType === 'ea') return 0;
+    var grams = (parseFloat(amount) || 0) * gramsPerPurchaseUnit(unitType);
+    return grams > 0 ? (parseFloat(price) || 0) / grams : 0;
+  }
+
+  // A recipe's cost-per-gram is scale-invariant — the ratio between ingredients is what
+  // matters, not whatever multiplier/target-total happens to be showing right now, since
+  // both the numerator (cost) and denominator (weight) scale together. So this just needs
+  // the recipe's ratios (recipeLike.flours/recipeLike.ingredients), not the actual current
+  // output of whatever calculator session happens to have this recipe open. Takes a plain
+  // { type, flours, ingredients } rather than reading global state, since the cost-calc
+  // modal loads its own independent copy of whichever recipe is picked there — it has
+  // nothing to do with whatever recipe (if any) is currently open in the main editor.
+  // price_per_gram of 0 (never priced, or an 'ea'-unit ingredient that can't be weight-
+  // converted) is treated as "unpriced" — contributes 0 cost and flags the result rather
+  // than silently understating it.
+  // Same ratio-based math as computeRecipeCostPerGramFor() used to do inline, but keeps each
+  // row's own weight/price/cost so the cost-calc modal can show "이 재료가 원가의 N%를
+  //차지해요" per ingredient, not just the recipe-wide total. `items` is in the same order as
+  // `recipeLike.flours.concat(recipeLike.ingredients)` (flours is always [] for engine B, so
+  // this is safe to do unconditionally rather than branching per type).
+  function computeCostBreakdown(recipeLike){
+    var isBread = recipeLike.type === 'bread';
+    var BASE = 100; // arbitrary basis (flour bucket = 100) for bread — only the ratio matters
+    var rows = recipeLike.flours.concat(recipeLike.ingredients);
+    var items = rows.map(function(row){
+      var w = isBread ? BASE * (parseFloat(row.pct) || 0) / 100 : (parseFloat(row.weight) || 0);
+      var pricePerGram = null, category = '';
+      if (row.ingredientId){
+        var found = myIngredients.find(function(ig){ return ig.id === row.ingredientId; });
+        if (found){
+          category = found.category || '';
+          if (found.price_per_gram > 0) pricePerGram = found.price_per_gram;
+        }
+      }
+      return { row: row, weight: w, pricePerGram: pricePerGram, category: category, cost: pricePerGram !== null ? w * pricePerGram : 0 };
+    });
+    var totalWeight = items.reduce(function(s, it){ return s + it.weight; }, 0);
+    var totalCost = items.reduce(function(s, it){ return s + it.cost; }, 0);
+    var hasUnpriced = items.some(function(it){ return it.pricePerGram === null; });
+    return {
+      items: items, totalWeight: totalWeight, totalCost: totalCost,
+      costPerGram: totalWeight > 0 ? totalCost / totalWeight : 0,
+      hasUnpriced: hasUnpriced
+    };
+  }
+
+  // price_per_gram of 0 (never priced, or an 'ea'-unit ingredient that can't be weight-
+  // converted) is treated as "unpriced" — contributes 0 cost and flags the result rather
+  // than silently understating it. A recipe's cost-per-gram is scale-invariant — the ratio
+  // between ingredients is what matters, not whatever multiplier/target-total happens to be
+  // showing right now — so this takes a plain { type, flours, ingredients } rather than
+  // reading global state; the cost-calc modal loads its own independent copy of whichever
+  // recipe is picked there, unrelated to whatever's open in the main editor.
+  function computeRecipeCostPerGramFor(recipeLike){
+    var breakdown = computeCostBreakdown(recipeLike);
+    return { costPerGram: breakdown.costPerGram, hasUnpriced: breakdown.hasUnpriced };
+  }
+
+  function loadMyIngredients(){
+    supabase.from('ingredients').select('*').order('name').then(function(res){
+      if (res.error){ alert('재료 목록을 불러오지 못했어요: ' + res.error.message); return; }
+      myIngredients = res.data || [];
+    });
+  }
+
+  var unitLabels = { g: 'g', kg: 'kg', ml: 'ml', l: 'l', ea: '개' };
+
+  // "재료 관리" card (opened from the account menu): a structural rebuild per ingredient
+  // (add/deactivate change the list), each row wired independently right after it's built —
+  // there's no reorder/index concern here (unlike ing-row), so each row just closes over its
+  // own `ig` record directly instead of going through a data-idx pass like buildIngRows().
+  function renderIngredientManager(query){
+    ingredientManagerListEl.innerHTML = '';
+    // Counted against the full list regardless of the current search filter, so it stays a
+    // reliable "N개 남았어요" status even while searching for something else entirely.
+    var unpricedCount = myIngredients.filter(function(ig){
+      return ig.is_active !== false && !(ig.price_per_gram > 0);
+    }).length;
+    ingredientManagerUnpricedHintEl.style.display = unpricedCount > 0 ? 'block' : 'none';
+    ingredientManagerUnpricedHintEl.textContent = unpricedCount > 0 ? ('단가 미입력 재료 ' + unpricedCount + '개') : '';
+    var q = (query || '').trim().toLowerCase();
+    var visible = myIngredients.filter(function(ig){
+      if (!q) return true;
+      return (ig.name || '').toLowerCase().indexOf(q) !== -1 ||
+             (ig.category || '').toLowerCase().indexOf(q) !== -1;
+    });
+    if (visible.length === 0){
+      var empty = document.createElement('p');
+      empty.className = 'hint';
+      empty.textContent = q ? '검색 결과가 없어요' : '아직 등록된 재료가 없어요 — 아래에서 추가해보세요.';
+      ingredientManagerListEl.appendChild(empty);
+    }
+    visible.forEach(function(ig){
+      var row = document.createElement('div');
+      row.className = 'ingredient-mgr-row';
+      var options = ['g','kg','ml','l','ea'].map(function(u){
+        return '<option value="' + u + '"' + (ig.purchase_unit_type === u ? ' selected' : '') + '>' + unitLabels[u] + '</option>';
+      }).join('');
+      row.innerHTML =
+        '<div class="ingredient-mgr-top">' +
+          '<input class="ing-mgr-name text-input">' +
+          '<button type="button" class="io-btn ing-mgr-toggle"></button>' +
+          (ig.is_active === false
+            ? '<button type="button" class="io-btn danger ing-mgr-delete">완전 삭제</button>'
+            : '') +
+        '</div>' +
+        '<input class="ing-mgr-category" placeholder="카테고리 (예: 유제품)">' +
+        '<div class="ingredient-mgr-cost">' +
+          '<input class="ing-mgr-amount" type="number" inputmode="decimal" step="0.1">' +
+          '<select class="ing-mgr-unit">' + options + '</select>' +
+          '<input class="ing-mgr-price" type="number" inputmode="decimal" step="10">' +
+          '<span class="unit">원</span>' +
+          '<span class="ing-mgr-per-gram"></span>' +
+        '</div>';
+      ingredientManagerListEl.appendChild(row);
+
+      var nameEl = row.querySelector('.ing-mgr-name');
+      var categoryEl = row.querySelector('.ing-mgr-category');
+      var amountEl = row.querySelector('.ing-mgr-amount');
+      var unitEl = row.querySelector('.ing-mgr-unit');
+      var priceEl = row.querySelector('.ing-mgr-price');
+      var perGramEl = row.querySelector('.ing-mgr-per-gram');
+      var toggleBtn = row.querySelector('.ing-mgr-toggle');
+
+      nameEl.value = ig.name || '';
+      categoryEl.value = ig.category || '';
+      amountEl.value = ig.purchase_amount || 0;
+      priceEl.value = ig.purchase_price || 0;
+      toggleBtn.textContent = ig.is_active === false ? '복원' : '사용중지';
+      toggleBtn.classList.toggle('danger', ig.is_active !== false);
+
+      function refreshPerGram(){
+        if (unitEl.value === 'ea'){
+          perGramEl.textContent = '개당 ' + (parseFloat(priceEl.value) || 0) + '원 (무게 환산 안 됨)';
+        } else {
+          var perGram = computePricePerGram(amountEl.value, unitEl.value, priceEl.value);
+          perGramEl.textContent = (Math.round(perGram * 100) / 100) + '원/g';
+        }
+      }
+      refreshPerGram();
+
+      function saveFields(fields){
+        supabase.from('ingredients').update(fields).eq('id', ig.id).then(function(res){
+          if (res.error){ alert('재료 정보 저장 실패: ' + res.error.message); return; }
+          Object.keys(fields).forEach(function(k){ ig[k] = fields[k]; });
+        });
+      }
+      nameEl.addEventListener('blur', function(){
+        var typed = nameEl.value.trim() || ig.name;
+        nameEl.value = typed;
+        if (typed !== ig.name) saveFields({ name: typed });
+      });
+      categoryEl.addEventListener('blur', function(){
+        var typed = categoryEl.value.trim();
+        if (typed !== (ig.category || '')) saveFields({ category: typed });
+      });
+      function saveCost(){
+        saveFields({
+          purchase_amount: parseFloat(amountEl.value) || 0,
+          purchase_unit_type: unitEl.value,
+          purchase_price: parseFloat(priceEl.value) || 0,
+          price_per_gram: computePricePerGram(amountEl.value, unitEl.value, priceEl.value)
+        });
+      }
+      amountEl.addEventListener('input', refreshPerGram);
+      priceEl.addEventListener('input', refreshPerGram);
+      amountEl.addEventListener('blur', saveCost);
+      priceEl.addEventListener('blur', saveCost);
+      unitEl.addEventListener('change', function(){ refreshPerGram(); saveCost(); });
+
+      toggleBtn.addEventListener('click', function(){
+        var nextActive = ig.is_active === false; // currently inactive -> this restores it
+        supabase.from('ingredients').update({ is_active: nextActive }).eq('id', ig.id).then(function(res){
+          if (res.error){ alert('상태 변경 실패: ' + res.error.message); return; }
+          ig.is_active = nextActive;
+          // Re-render (rather than patch this one button) so "완전 삭제" appears/disappears
+          // along with the active/inactive state — it's only offered once deactivated first,
+          // as a light safety rail against permanently deleting something still in use.
+          renderIngredientManager(ingredientManagerSearchInput.value);
+        });
+      });
+
+      var deleteBtn = row.querySelector('.ing-mgr-delete');
+      if (deleteBtn){
+        deleteBtn.addEventListener('click', function(){
+          if (!confirm('"' + (ig.name || '이 재료') + '"를 완전히 삭제할까요? 이 재료를 쓰던 레시피가 있다면 그 안의 이름은 남지만 다시 연결할 수 없게 돼요.')) return;
+          supabase.from('ingredients').delete().eq('id', ig.id).then(function(res){
+            if (res.error){ alert('삭제 실패: ' + res.error.message); return; }
+            myIngredients = myIngredients.filter(function(other){ return other.id !== ig.id; });
+            renderIngredientManager(ingredientManagerSearchInput.value);
+            showToast('재료를 삭제했어요');
+          });
+        });
+      }
+    });
+  }
+
+  function loadProducts(recipeId){
+    supabase.from('products').select('*').eq('recipe_id', recipeId).order('created_at').then(function(res){
+      if (res.error){ alert('제품 목록을 불러오지 못했어요: ' + res.error.message); return; }
+      myProducts = res.data || [];
+      renderProductsList();
+    });
+  }
+
+  // Re-reads every currently-rendered product row's own inputs (rather than myProducts,
+  // which may lag behind an unsaved keystroke) so cost/margin update live as the user types,
+  // matching the same "recompute into existing nodes" rhythm updateDisplays() itself uses
+  // for the main calculator. costModalRecipe is the cost-calc modal's own independent copy
+  // of whichever recipe is currently loaded there (see openCostCalcRecipe()).
+  // A product's portion_weight is its finished/shaped weight, but the dough that went into
+  // it costs more than that per gram once trim loss (재단/성형 파지) is accounted for —
+  // (총 반죽 − 성형완료 총중량) ÷ 총 반죽 × 100 = 로스율 means it took 1/(1-로스율) grams of
+  // dough to yield 1 gram of finished product. Applied per product (not per recipe) since one
+  // batch can be shaped into several different products with different trim ratios (e.g. PLF
+  // dough cut into both croissants and pains au chocolat).
+  function effectiveCostPerGram(costPerGram, lossRatePct){
+    var loss = Math.max(0, Math.min(99, parseFloat(lossRatePct) || 0)) / 100;
+    return loss > 0 ? costPerGram / (1 - loss) : costPerGram;
+  }
+
+  function refreshProductCosts(){
+    if (!costModalRecipe) return;
+    var cost = computeRecipeCostPerGramFor(costModalRecipe);
+    costCostPerGramHintEl.textContent = '이 레시피의 g당 원가: ' + (Math.round(cost.costPerGram * 100) / 100) + '원/g';
+    costUnpricedHintEl.style.display = cost.hasUnpriced ? 'block' : 'none';
+
+    costProductsListEl.querySelectorAll('.product-row').forEach(function(row){
+      var weightEl = row.querySelector('.product-weight');
+      var priceEl = row.querySelector('.product-price');
+      var lossEl = row.querySelector('.product-loss');
+      var resultEl = row.querySelector('.product-cost-result');
+      var weight = parseFloat(weightEl.value) || 0;
+      var price = parseFloat(priceEl.value) || 0;
+      var lossRate = Math.max(0, Math.min(99, parseFloat(lossEl.value) || 0));
+      var effCostPerGram = effectiveCostPerGram(cost.costPerGram, lossRate);
+      var productCost = Math.round(effCostPerGram * weight);
+      var margin = price - productCost;
+      var marginRate = price > 0 ? Math.round(margin / price * 100) : null;
+      resultEl.textContent = '원가 ' + productCost + '원 · 마진 ' + margin + '원' +
+        (marginRate !== null ? ' (마진율 ' + marginRate + '%)' : '') +
+        (lossRate > 0 ? ' (로스 ' + lossRate + '% 반영)' : '');
+    });
+  }
+
+  function renderProductsList(){
+    costProductsListEl.innerHTML = '';
+    myProducts.forEach(function(pd){
+      var row = document.createElement('div');
+      row.className = 'product-row';
+      row.innerHTML =
+        '<div class="product-top">' +
+          '<input class="product-name text-input">' +
+          '<button type="button" class="icon-btn danger product-del" aria-label="제품 삭제">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="3 6 5 6 21 6"></polyline>' +
+              '<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>' +
+              '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+              '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+            '</svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="product-cost-inputs">' +
+          '<input class="product-weight" type="number" inputmode="decimal" placeholder="1개당">' +
+          '<span class="unit">g</span>' +
+          '<input class="product-price" type="number" inputmode="decimal" placeholder="판매가">' +
+          '<span class="unit">원</span>' +
+          '<input class="product-loss" type="number" inputmode="decimal" step="0.1" min="0" max="99" placeholder="로스율">' +
+          '<span class="unit">%</span>' +
+          '<button type="button" class="loss-calc-toggle">계산</button>' +
+        '</div>' +
+        '<div class="loss-calc-panel" style="display:none;">' +
+          '<input class="loss-calc-dough" type="number" inputmode="decimal" placeholder="총 반죽(g)">' +
+          '<span class="loss-calc-sep">→</span>' +
+          '<input class="loss-calc-formed" type="number" inputmode="decimal" placeholder="성형 완료 총(g)">' +
+          '<span class="loss-calc-result"></span>' +
+        '</div>' +
+        '<div class="product-cost-result"></div>';
+      costProductsListEl.appendChild(row);
+
+      var nameEl = row.querySelector('.product-name');
+      var weightEl = row.querySelector('.product-weight');
+      var priceEl = row.querySelector('.product-price');
+      var lossEl = row.querySelector('.product-loss');
+      var delBtn = row.querySelector('.product-del');
+      var lossCalcToggle = row.querySelector('.loss-calc-toggle');
+      var lossCalcPanel = row.querySelector('.loss-calc-panel');
+      var doughEl = row.querySelector('.loss-calc-dough');
+      var formedEl = row.querySelector('.loss-calc-formed');
+      var lossCalcResultEl = row.querySelector('.loss-calc-result');
+
+      nameEl.value = pd.name || '';
+      // Left blank (not "0") when unset so the placeholder ("1개당(g)" etc.) actually shows —
+      // a real value of 0 is meaningless for these fields anyway, and a brand-new product
+      // otherwise showed three indistinguishable "0"s with no way to tell which was which.
+      weightEl.value = pd.portion_weight > 0 ? pd.portion_weight : '';
+      priceEl.value = pd.selling_price > 0 ? pd.selling_price : '';
+      lossEl.value = pd.loss_rate_pct > 0 ? pd.loss_rate_pct : '';
+
+      function saveFields(fields){
+        supabase.from('products').update(fields).eq('id', pd.id).then(function(res){
+          if (res.error){ alert('제품 정보 저장 실패: ' + res.error.message); return; }
+          Object.keys(fields).forEach(function(k){ pd[k] = fields[k]; });
+        });
+      }
+      nameEl.addEventListener('blur', function(){
+        var typed = nameEl.value.trim() || pd.name;
+        nameEl.value = typed;
+        if (typed !== pd.name) saveFields({ name: typed });
+      });
+      function saveWeightPrice(){
+        saveFields({
+          portion_weight: parseFloat(weightEl.value) || 0,
+          selling_price: parseFloat(priceEl.value) || 0,
+          loss_rate_pct: Math.max(0, Math.min(99, parseFloat(lossEl.value) || 0))
+        });
+      }
+      weightEl.addEventListener('input', refreshProductCosts);
+      priceEl.addEventListener('input', refreshProductCosts);
+      lossEl.addEventListener('input', refreshProductCosts);
+      weightEl.addEventListener('blur', saveWeightPrice);
+      priceEl.addEventListener('blur', saveWeightPrice);
+      lossEl.addEventListener('blur', saveWeightPrice);
+
+      // Small helper so 로스율 doesn't have to be hand-calculated first: type the batch's
+      // total dough weight and the total weight of the actually-shaped pieces, and it fills
+      // in the 로스율 field itself (same formula the user gave: (반죽-성형)÷반죽×100). The two
+      // raw numbers aren't persisted anywhere — only the resulting % is — so this is a
+      // one-time scratchpad, not a saved field; re-open it and retype if revisiting later.
+      lossCalcToggle.addEventListener('click', function(){
+        lossCalcPanel.style.display = lossCalcPanel.style.display === 'none' ? 'flex' : 'none';
+      });
+      function updateLossCalc(){
+        var dough = parseFloat(doughEl.value) || 0;
+        var formed = parseFloat(formedEl.value) || 0;
+        if (dough > 0 && formed >= 0 && formed <= dough){
+          var computed = Math.round((dough - formed) / dough * 1000) / 10;
+          lossCalcResultEl.textContent = '로스율 ' + computed + '%';
+          lossEl.value = computed;
+          refreshProductCosts();
+        } else {
+          lossCalcResultEl.textContent = '';
+        }
+      }
+      doughEl.addEventListener('input', updateLossCalc);
+      formedEl.addEventListener('input', updateLossCalc);
+      doughEl.addEventListener('blur', saveWeightPrice);
+      formedEl.addEventListener('blur', saveWeightPrice);
+
+      delBtn.addEventListener('click', function(){
+        if (!confirm('"' + (pd.name || '이 제품') + '"을 삭제할까요?')) return;
+        supabase.from('products').delete().eq('id', pd.id).then(function(res){
+          if (res.error){ alert('삭제 실패: ' + res.error.message); return; }
+          myProducts = myProducts.filter(function(other){ return other.id !== pd.id; });
+          renderProductsList();
+          showToast('제품을 삭제했어요');
+        });
+      });
+    });
+    refreshProductCosts();
+  }
+
+  // A row only counts as "resolved" if its ingredientId actually exists in the master list —
+  // deactivated ingredients still exist (so this stays resolved), but a stale/orphaned id
+  // (e.g. from direct DB edits outside this app) correctly falls back to the warning state.
+  function markResolved(inputEl, row){
+    var exists = row.ingredientId && myIngredients.some(function(ig){ return ig.id === row.ingredientId; });
+    if (exists) inputEl.removeAttribute('data-unresolved');
+    else inputEl.setAttribute('data-unresolved', '');
+  }
+
+  // Whitespace differences ("르방리퀴드" vs "르방 리퀴드") are the same ingredient, not a
+  // fuzzy match — normalize before comparing so migrateIngredientRow() treats them as exact.
+  function normalizeForMatch(s){
+    return (s || '').replace(/\s+/g, '').toLowerCase();
+  }
+
+  // Legacy rows (saved before ingredient-DB linking existed) only have a `name`. On load,
+  // try a one-shot whitespace-normalized name match against the ingredient master; on success
+  // the row is linked from here on, on failure it's left unresolved (ingredientId stays null)
+  // — same non-blocking "please pick one" state a never-confirmed new row is in, no special case.
+  function migrateIngredientRow(row){
+    if (!row.ingredientId && row.name){
+      var norm = normalizeForMatch(row.name);
+      var match = myIngredients.find(function(ig){ return normalizeForMatch(ig.name) === norm; });
+      if (match) row.ingredientId = match.id;
+    }
+    return row;
+  }
+
+  // Classic edit-distance DP, used only to suggest a likely match for a still-unresolved
+  // ingredient row (typos, not just whitespace — those are already caught by
+  // migrateIngredientRow()'s normalized exact match above).
+  function levenshtein(a, b){
+    if (a === b) return 0;
+    var m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    var prev = [], curr = [];
+    for (var j = 0; j <= n; j++) prev[j] = j;
+    for (var i = 1; i <= m; i++){
+      curr[0] = i;
+      for (j = 1; j <= n; j++){
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      }
+      var tmp = prev; prev = curr; curr = tmp;
+    }
+    return prev[n];
+  }
+
+  // Best-guess candidate for a row that migrateIngredientRow() couldn't resolve — lets the
+  // cost-calc ingredient list offer a one-click "혹시 이건가요?" instead of making the user
+  // open the search combo and retype something that's 90% already right (typo, one missing
+  // character, etc). Threshold scales with name length so short names need a near-exact typo,
+  // not just "any 2 edits away."
+  function findSimilarIngredient(name){
+    var norm = normalizeForMatch(name);
+    if (!norm) return null;
+    var best = null, bestDist = Infinity;
+    myIngredients.forEach(function(ig){
+      if (ig.is_active === false) return;
+      var igNorm = normalizeForMatch(ig.name);
+      if (!igNorm || igNorm === norm) return;
+      var dist = levenshtein(norm, igNorm);
+      var threshold = Math.max(1, Math.floor(Math.max(norm.length, igNorm.length) * 0.34));
+      if (dist <= threshold && dist < bestDist){
+        best = ig; bestDist = dist;
+      }
+    });
+    return best;
+  }
+
+  // Reusable searchable combo for picking one of the user's own recipes — same show-
+  // everything-on-focus/filter-on-type pattern as "내 레시피"/원가계산's recipe picker,
+  // generalized here since 조합 제품's component rows need the same "search my recipes, pick
+  // one" interaction repeated per row. Reuses .ing-link-combo/.combo-dropdown (both already
+  // exist for the ingredient linker) so the existing document-level outside-click closer
+  // picks these instances up automatically without any extra wiring.
+  function attachRecipePicker(inputEl, dropdownEl, getCurrentName, onPick){
+    function closeDropdown(){ dropdownEl.style.display = 'none'; }
+    function renderList(showAll){
+      var typed = inputEl.value.trim();
+      var q = showAll ? '' : typed.toLowerCase();
+      var matches = myRecipes.filter(function(r){
+        return currentUser && r.owner_id === currentUser.id &&
+          (!q || (r.recipe_name || '').toLowerCase().indexOf(q) !== -1);
+      });
+      dropdownEl.innerHTML = '';
+      if (matches.length === 0){
+        var empty = document.createElement('div');
+        empty.className = 'combo-dropdown-empty';
+        empty.textContent = '일치하는 레시피가 없어요';
+        dropdownEl.appendChild(empty);
+        return;
+      }
+      matches.forEach(function(r){
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'combo-dropdown-item';
+        item.textContent = r.recipe_name || '이름 없는 레시피';
+        item.addEventListener('click', function(){
+          inputEl.value = r.recipe_name || '';
+          closeDropdown();
+          onPick(r);
+        });
+        dropdownEl.appendChild(item);
+      });
+    }
+    function openDropdown(showAll){
+      renderList(showAll);
+      dropdownEl.style.display = 'block';
+    }
+    inputEl.addEventListener('focus', function(){ openDropdown(true); });
+    inputEl.addEventListener('input', function(){ openDropdown(false); });
+    inputEl.addEventListener('blur', function(){
+      inputEl.value = getCurrentName(); // cancel an unfinished search back to whatever's actually picked
+    });
+  }
+
+  // Reused only by the "원가 계산" modal's ingredient-link list: same show-everything-on-
+  // focus/filter-on-type search pattern the recipe editor's ingredient combo used to have,
+  // but this one NEVER touches row.name — it only ever sets row.ingredientId. That split is
+  // the whole point of this screen: a recipe can keep a short generic name ("버터") while
+  // being linked to a specific costed ingredient ("앵커버터") for cost calculation, without
+  // the recipe's own display ever getting silently renamed to the specific brand name.
+  function attachIngredientLinker(inputEl, dropdownEl, row, onChange){
+    function linkedName(){
+      if (row.ingredientId){
+        var found = myIngredients.find(function(ig){ return ig.id === row.ingredientId; });
+        if (found) return found.name;
+      }
+      return '';
+    }
+    inputEl.value = linkedName();
+    inputEl.placeholder = '재료 선택';
+    markResolved(inputEl, row);
+
+    function closeDropdown(){ dropdownEl.style.display = 'none'; }
+    function renderList(showAll){
+      var typed = inputEl.value.trim();
+      var q = showAll ? '' : typed.toLowerCase();
+      var matches = myIngredients.filter(function(ig){
+        return ig.is_active !== false && (!q || ig.name.toLowerCase().indexOf(q) !== -1);
+      });
+      dropdownEl.innerHTML = '';
+      if (matches.length === 0 && !typed){
+        var empty = document.createElement('div');
+        empty.className = 'combo-dropdown-empty';
+        empty.textContent = '등록된 재료가 없어요 — 입력하면 새로 추가할 수 있어요';
+        dropdownEl.appendChild(empty);
+      }
+      matches.forEach(function(ig){
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'combo-dropdown-item';
+        item.textContent = ig.name;
+        item.addEventListener('click', function(){
+          row.ingredientId = ig.id;
+          inputEl.value = ig.name;
+          inputEl.removeAttribute('data-unresolved');
+          closeDropdown();
+          if (onChange) onChange();
+        });
+        dropdownEl.appendChild(item);
+      });
+      var exactMatch = typed && myIngredients.some(function(ig){ return ig.name === typed; });
+      if (typed && !exactMatch){
+        var addItem = document.createElement('button');
+        addItem.type = 'button';
+        addItem.className = 'combo-dropdown-item combo-add-new';
+        addItem.textContent = '+ "' + typed + '" 새 재료로 추가';
+        addItem.addEventListener('click', function(){
+          supabase.from('ingredients').insert({ owner_id: currentUser.id, name: typed }).select().single().then(function(res){
+            if (res.error){ alert('재료 추가 실패: ' + res.error.message); return; }
+            myIngredients.push(res.data);
+            row.ingredientId = res.data.id;
+            inputEl.value = res.data.name;
+            inputEl.removeAttribute('data-unresolved');
+            closeDropdown();
+            if (onChange) onChange();
+          });
+        });
+        dropdownEl.appendChild(addItem);
+      }
+    }
+    function openDropdown(showAll){
+      renderList(showAll);
+      dropdownEl.style.display = 'block';
+    }
+
+    inputEl.addEventListener('focus', function(){ openDropdown(true); });
+    inputEl.addEventListener('input', function(){ openDropdown(false); }); // typing only filters — never saved as row.name/ingredientId until a candidate is picked
+    inputEl.addEventListener('blur', function(){
+      // Canceling a search (clicking away without picking anything) should restore the
+      // display to whatever's actually linked, not leave stray typed text showing.
+      inputEl.value = linkedName();
+    });
+  }
+
+  // Ingredient linkers are rebuilt every time the cost-calc modal renders a recipe's
+  // ingredient list, so a single document-level closer (attached once, here) handles closing
+  // whichever one is open instead of each attachIngredientLinker() call adding its own
+  // permanent listener.
+  document.addEventListener('click', function(e){
+    document.querySelectorAll('.ing-link-combo').forEach(function(wrap){
+      if (!wrap.contains(e.target)) {
+        var dd = wrap.querySelector('.combo-dropdown');
+        if (dd) dd.style.display = 'none';
+      }
+    });
+  });
+
+  function loadCompositeProducts(){
+    supabase.from('composite_products').select('*, composite_product_components(*)').order('created_at').then(function(res){
+      if (res.error){ alert('조합 제품 목록을 불러오지 못했어요: ' + res.error.message); return; }
+      myCompositeProducts = res.data || [];
+      renderCompositeProductsList();
+    });
+  }
+
+  // A component's own recipe may itself be unpriced/underpriced — same computeRecipeCostPerGramFor()
+  // used by the plain "제품 & 원가" screen, just looked up by recipe_id here since a composite
+  // product isn't tied to any single recipe the way costModalRecipe is.
+  function costPerGramForRecipeId(recipeId){
+    var recipe = myRecipes.find(function(r){ return r.id === recipeId; });
+    if (!recipe) return { costPerGram: 0, hasUnpriced: true };
+    var recipeLike = {
+      type: (recipe.recipe_type === 'confection' || recipe.recipe_type === 'other') ? recipe.recipe_type : 'bread',
+      flours: Array.isArray(recipe.flours) ? recipe.flours : [],
+      ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients : []
+    };
+    return computeRecipeCostPerGramFor(recipeLike);
+  }
+
+  // Structural rebuild per composite product/component (add/delete change the list, same
+  // rhythm as renderIngredientManager()/renderProductsList()) — each row closes over its own
+  // `cp`/`comp` record directly rather than going through a data-idx pass, since there's no
+  // reorder concern here either.
+  function renderCompositeProductsList(){
+    compositeProductsListEl.innerHTML = '';
+    if (myCompositeProducts.length === 0){
+      var empty = document.createElement('p');
+      empty.className = 'hint';
+      empty.textContent = '아직 등록된 조합 제품이 없어요 — 위에서 추가해보세요.';
+      compositeProductsListEl.appendChild(empty);
+      return;
+    }
+    myCompositeProducts.forEach(function(cp){
+      var row = document.createElement('div');
+      row.className = 'composite-row';
+      row.innerHTML =
+        '<div class="composite-top">' +
+          '<input class="composite-name text-input">' +
+          '<button type="button" class="icon-btn danger composite-del" aria-label="조합 제품 삭제">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="3 6 5 6 21 6"></polyline>' +
+              '<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>' +
+              '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+              '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+            '</svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="composite-components"></div>' +
+        '<button type="button" class="add-btn composite-add-component" style="margin-top:8px;">+ 구성요소 추가</button>' +
+        '<div class="composite-cost-inputs">' +
+          '<span class="field-label">판매가</span>' +
+          '<input class="composite-price" type="number" inputmode="decimal" placeholder="판매가">' +
+          '<span class="unit">원</span>' +
+        '</div>' +
+        '<div class="composite-cost-result"></div>' +
+        '<p class="hint warn-hint composite-issue-hint" style="display:none;"></p>';
+      compositeProductsListEl.appendChild(row);
+
+      var nameEl = row.querySelector('.composite-name');
+      var delBtn = row.querySelector('.composite-del');
+      var componentsEl = row.querySelector('.composite-components');
+      var addComponentBtn = row.querySelector('.composite-add-component');
+      var priceEl = row.querySelector('.composite-price');
+      var resultEl = row.querySelector('.composite-cost-result');
+      var issueHintEl = row.querySelector('.composite-issue-hint');
+
+      nameEl.value = cp.name || '';
+      priceEl.value = cp.selling_price > 0 ? cp.selling_price : '';
+
+      function saveCompositeFields(fields){
+        supabase.from('composite_products').update(fields).eq('id', cp.id).then(function(res){
+          if (res.error){ alert('조합 제품 저장 실패: ' + res.error.message); return; }
+          Object.keys(fields).forEach(function(k){ cp[k] = fields[k]; });
+        });
+      }
+      nameEl.addEventListener('blur', function(){
+        var typed = nameEl.value.trim() || cp.name;
+        nameEl.value = typed;
+        if (typed !== cp.name) saveCompositeFields({ name: typed });
+      });
+      priceEl.addEventListener('input', refreshCompositeCost);
+      priceEl.addEventListener('blur', function(){
+        saveCompositeFields({ selling_price: parseFloat(priceEl.value) || 0 });
+      });
+
+      // Re-reads each rendered component row's own inputs (not the possibly-stale
+      // composite_product_components cache) so the total updates live as the user types,
+      // matching refreshProductCosts()'s "recompute into existing nodes" rhythm.
+      function refreshCompositeCost(){
+        var totalCost = 0;
+        var hasIssue = false;
+        var anyComponent = false;
+        componentsEl.querySelectorAll('.composite-component-row').forEach(function(compRow){
+          anyComponent = true;
+          var recipeId = compRow.dataset.recipeId || '';
+          var weightEl = compRow.querySelector('.component-weight');
+          var lossEl = compRow.querySelector('.component-loss');
+          var compResultEl = compRow.querySelector('.component-cost-result');
+          var weight = parseFloat(weightEl.value) || 0;
+          var lossRate = Math.max(0, Math.min(99, parseFloat(lossEl.value) || 0));
+          if (!recipeId){
+            compResultEl.textContent = '레시피를 선택해주세요';
+            compResultEl.classList.add('warn-hint');
+            hasIssue = true;
+            return;
+          }
+          var cost = costPerGramForRecipeId(recipeId);
+          var effCost = effectiveCostPerGram(cost.costPerGram, lossRate);
+          var componentCost = Math.round(effCost * weight);
+          totalCost += componentCost;
+          // Flag the specific component whose recipe has an unpriced ingredient, not just a
+          // generic notice at the bottom — otherwise "원가 0원" looks like a valid result and
+          // there's no way to tell which of several components is the one to go fix.
+          compResultEl.classList.toggle('warn-hint', cost.hasUnpriced);
+          compResultEl.textContent = '원가 ' + componentCost + '원' +
+            (lossRate > 0 ? ' (로스 ' + lossRate + '% 반영)' : '') +
+            (cost.hasUnpriced ? ' · 단가 없음' : '');
+          if (cost.hasUnpriced) hasIssue = true;
+        });
+        var price = parseFloat(priceEl.value) || 0;
+        var margin = price - totalCost;
+        var marginRate = price > 0 ? Math.round(margin / price * 100) : null;
+        resultEl.textContent = !anyComponent ? '구성요소를 추가해주세요' :
+          ('총원가 ' + totalCost + '원 · 마진 ' + margin + '원' +
+          (marginRate !== null ? ' (마진율 ' + marginRate + '%)' : ''));
+        issueHintEl.style.display = hasIssue ? 'block' : 'none';
+        issueHintEl.textContent = '일부 구성요소의 재료 단가가 없어 원가가 정확하지 않을 수 있어요.';
+      }
+
+      function renderComponentRow(comp){
+        var compRow = document.createElement('div');
+        compRow.className = 'composite-component-row';
+        compRow.dataset.recipeId = comp.recipe_id || '';
+        compRow.innerHTML =
+          '<div class="component-top">' +
+            '<div class="ing-link-combo"><input class="component-recipe-input" autocomplete="off" placeholder="레시피 선택"><div class="combo-dropdown" style="display:none;"></div></div>' +
+            '<button type="button" class="icon-btn danger component-del" aria-label="구성요소 삭제">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<polyline points="3 6 5 6 21 6"></polyline>' +
+                '<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>' +
+                '<line x1="10" y1="11" x2="10" y2="17"></line>' +
+                '<line x1="14" y1="11" x2="14" y2="17"></line>' +
+              '</svg>' +
+            '</button>' +
+          '</div>' +
+          '<div class="component-cost-inputs">' +
+            '<input class="component-weight" type="number" inputmode="decimal" placeholder="무게">' +
+            '<span class="unit">g</span>' +
+            '<input class="component-loss" type="number" inputmode="decimal" step="0.1" min="0" max="99" placeholder="로스율">' +
+            '<span class="unit">%</span>' +
+          '</div>' +
+          '<div class="component-cost-result"></div>';
+        componentsEl.appendChild(compRow);
+
+        var recipeInput = compRow.querySelector('.component-recipe-input');
+        var recipeDropdown = compRow.querySelector('.combo-dropdown');
+        var weightEl = compRow.querySelector('.component-weight');
+        var lossEl = compRow.querySelector('.component-loss');
+        var compDelBtn = compRow.querySelector('.component-del');
+
+        function currentRecipeName(){
+          var r = myRecipes.find(function(rr){ return rr.id === compRow.dataset.recipeId; });
+          return r ? (r.recipe_name || '') : '';
+        }
+        recipeInput.value = currentRecipeName();
+        weightEl.value = comp.weight_g > 0 ? comp.weight_g : '';
+        lossEl.value = comp.loss_rate_pct > 0 ? comp.loss_rate_pct : '';
+
+        function saveComponentFields(fields){
+          supabase.from('composite_product_components').update(fields).eq('id', comp.id).then(function(res){
+            if (res.error){ alert('구성요소 저장 실패: ' + res.error.message); return; }
+            Object.keys(fields).forEach(function(k){ comp[k] = fields[k]; });
+          });
+        }
+        attachRecipePicker(recipeInput, recipeDropdown, currentRecipeName, function(recipe){
+          compRow.dataset.recipeId = recipe.id;
+          saveComponentFields({ recipe_id: recipe.id });
+          refreshCompositeCost();
+        });
+        weightEl.addEventListener('input', refreshCompositeCost);
+        lossEl.addEventListener('input', refreshCompositeCost);
+        weightEl.addEventListener('blur', function(){
+          saveComponentFields({ weight_g: parseFloat(weightEl.value) || 0 });
+        });
+        lossEl.addEventListener('blur', function(){
+          saveComponentFields({ loss_rate_pct: Math.max(0, Math.min(99, parseFloat(lossEl.value) || 0)) });
+        });
+        compDelBtn.addEventListener('click', function(){
+          if (!confirm('이 구성요소를 삭제할까요?')) return;
+          supabase.from('composite_product_components').delete().eq('id', comp.id).then(function(res){
+            if (res.error){ alert('삭제 실패: ' + res.error.message); return; }
+            cp.composite_product_components = (cp.composite_product_components || []).filter(function(c){ return c.id !== comp.id; });
+            compRow.remove();
+            refreshCompositeCost();
+          });
+        });
+      }
+
+      (cp.composite_product_components || []).forEach(renderComponentRow);
+      refreshCompositeCost();
+
+      addComponentBtn.addEventListener('click', function(){
+        if (!currentUser) return;
+        supabase.from('composite_product_components').insert({
+          composite_product_id: cp.id, recipe_id: null, weight_g: 0, loss_rate_pct: 0
+        }).select().single().then(function(res){
+          if (res.error){ alert('구성요소 추가 실패: ' + res.error.message); return; }
+          cp.composite_product_components = (cp.composite_product_components || []).concat([res.data]);
+          renderComponentRow(res.data);
+          refreshCompositeCost();
+          var newRow = componentsEl.querySelector('.composite-component-row:last-child .component-recipe-input');
+          if (newRow) newRow.focus();
+        });
+      });
+
+      delBtn.addEventListener('click', function(){
+        if (!confirm('"' + (cp.name || '이 조합 제품') + '"을 삭제할까요? 구성요소도 함께 삭제돼요.')) return;
+        supabase.from('composite_products').delete().eq('id', cp.id).then(function(res){
+          if (res.error){ alert('삭제 실패: ' + res.error.message); return; }
+          myCompositeProducts = myCompositeProducts.filter(function(other){ return other.id !== cp.id; });
+          renderCompositeProductsList();
+          showToast('조합 제품을 삭제했어요');
+        });
+      });
+    });
+  }
+
+  function clearSelectedRecipe(){
+    selectedRecipeId = null;
+    shareSelectedBtn.style.display = 'none';
+    deleteSelectedBtn.style.display = 'none';
+    selectedSharePanelEl.style.display = 'none';
+  }
+
+  function renderSelectedRecipe(recipe){
+    selectedRecipeId = recipe.id;
+    var isOwner = currentUser && recipe.owner_id === currentUser.id;
+    shareSelectedBtn.style.display = isOwner ? '' : 'none';
+    deleteSelectedBtn.style.display = isOwner ? '' : 'none';
+    if (!isOwner){
+      selectedSharePanelEl.style.display = 'none';
+      return;
+    }
+    toggleLinkBtn.textContent = recipe.share_token ? '링크 끄기' : '링크 켜기';
+    if (recipe.share_token){
+      linkUrlTextEl.textContent = shareUrl(recipe.share_token);
+      linkRowEl.style.display = 'flex';
+    } else {
+      linkRowEl.style.display = 'none';
+    }
+  }
+
+  // Custom searchable dropdown (native <datalist> can't be restyled and can't be
+  // opened/closed on demand — this replaces it with a plain styled list).
+  function loadRecipeByName(name){
+    var recipe = myRecipes.find(function(r){ return r.recipe_name === name; });
+    if (!recipe){ clearSelectedRecipe(); return; }
+    applyRecipeRowToState(recipe);
+    renderSelectedRecipe(recipe);
+    // The recipe-name field above already displays what's loaded, so the search box's
+    // only job is finding something — clear it back to a blank "search again" state
+    // instead of also mirroring the name (that was the same redundancy the old
+    // "selected recipe" row had, just moved into this box instead).
+    recipeSearchInput.value = '';
+    showToast('레시피를 불러왔어요');
+  }
+
+  // "Opening" the dropdown (via the toggle button, or by focusing the search box) always
+  // starts from the FULL recipe list, regardless of whatever name is currently sitting in
+  // the box (e.g. right after loading a recipe) — only actually typing new characters
+  // narrows it down. This keeps "browse everything" and "filter by name" as two separate
+  // actions instead of the leftover loaded-recipe name silently hiding the rest of the list.
+  function renderRecipeDropdown(showAll){
+    var q = showAll ? '' : recipeSearchInput.value.trim().toLowerCase();
+    var matches = myRecipes.filter(function(r){
+      return !q || (r.recipe_name || '').toLowerCase().indexOf(q) !== -1;
+    });
+    recipeDropdownEl.innerHTML = '';
+    if (matches.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'combo-dropdown-empty';
+      empty.textContent = '일치하는 레시피가 없어요';
+      recipeDropdownEl.appendChild(empty);
+      return;
+    }
+    matches.forEach(function(r){
+      var item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'combo-dropdown-item';
+      item.textContent = r.recipe_name || '이름 없는 레시피';
+      item.addEventListener('click', function(){
+        closeRecipeDropdown();
+        loadRecipeByName(r.recipe_name);
+      });
+      recipeDropdownEl.appendChild(item);
+    });
+  }
+
+  function openRecipeDropdown(showAll){
+    renderRecipeDropdown(showAll);
+    recipeDropdownEl.style.display = 'block';
+  }
+  function closeRecipeDropdown(){
+    recipeDropdownEl.style.display = 'none';
+  }
+
+  recipeSearchInput.addEventListener('focus', function(){ openRecipeDropdown(true); });
+  recipeSearchInput.addEventListener('input', function(){
+    openRecipeDropdown(false); // now the user is actively typing, so filter for real
+    loadRecipeByName(recipeSearchInput.value); // auto-loads on an exact typed match too
+  });
+  recipeDropdownToggleBtn.addEventListener('click', function(){
+    if (recipeDropdownEl.style.display === 'none') { recipeSearchInput.focus(); openRecipeDropdown(true); }
+    else closeRecipeDropdown();
+  });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.recipe-combo')) closeRecipeDropdown();
+  });
+
+  deleteSelectedBtn.addEventListener('click', function(){
+    if (!selectedRecipeId) return;
+    if (!confirm('이 레시피를 삭제할까요?')) return;
+    supabase.from('recipes').delete().eq('id', selectedRecipeId).then(function(res){
+      if (res.error){ alert('삭제 실패: ' + res.error.message); return; }
+      recipeSearchInput.value = '';
+      clearSelectedRecipe();
+      loadMyRecipes();
+      showToast('레시피를 삭제했어요');
+    });
+  });
+
+  shareSelectedBtn.addEventListener('click', function(){
+    selectedSharePanelEl.style.display = selectedSharePanelEl.style.display === 'none' ? 'block' : 'none';
+  });
+
+  toggleLinkBtn.addEventListener('click', function(){
+    if (!selectedRecipeId) return;
+    var recipe = myRecipes.find(function(r){ return r.id === selectedRecipeId; });
+    var enable = !(recipe && recipe.share_token);
+    supabase.rpc('set_recipe_share_token', { p_recipe_id: selectedRecipeId, p_enable: enable }).then(function(res){
+      if (res.error){ alert('공유 링크 설정 실패: ' + res.error.message); return; }
+      if (recipe) recipe.share_token = res.data;
+      if (enable){
+        linkUrlTextEl.textContent = shareUrl(res.data);
+        linkRowEl.style.display = 'flex';
+        toggleLinkBtn.textContent = '링크 끄기';
+        copyToClipboard(shareUrl(res.data));
+        showToast('공유 링크를 복사했어요');
+      } else {
+        linkRowEl.style.display = 'none';
+        toggleLinkBtn.textContent = '링크 켜기';
+        showToast('공유 링크를 껐어요');
+      }
+    });
+  });
+
+  copyLinkBtn.addEventListener('click', function(){
+    copyToClipboard(linkUrlTextEl.textContent);
+    showToast('공유 링크를 복사했어요');
+  });
+
+  function newRecipe(type){
+    state.type = type || 'bread';
+    recipeNameInput.value = '새 레시피';
+    notesInput.value = '';
+    state.mode = 'A';
+    state.baseFlour = 0;
+    state.multiplier = 1;
+    state.targetTotal = 0;
+    state.portions = [];
+    if (state.type === 'bread'){
+      state.flours = [{ ingredientId: null, name: '밀가루', pct: 100 }];
+      state.ingredients = [
+        { ingredientId: null, name: '물', pct: 0 },
+        { ingredientId: null, name: '소금', pct: 0 },
+        { ingredientId: null, name: '이스트', pct: 0 }
+      ];
+    } else {
+      state.flours = [];
+      state.ingredients = [
+        { ingredientId: null, name: '재료 1', weight: 0 },
+        { ingredientId: null, name: '재료 2', weight: 0 }
+      ];
+    }
+    baseFlourInput.value = state.baseFlour;
+    multInput.value = state.multiplier;
+    targetTotalInput.value = state.targetTotal;
+    recipeSearchInput.value = '';
+    clearSelectedRecipe();
+    applyModeUI();
+    applyEngineUI();
+    suppressDirtyTracking = true;
+    render();
+    suppressDirtyTracking = false;
+    markClean();
+  }
+
+  var newRecipeMenuEl = document.getElementById('newRecipeMenu');
+  function closeNewRecipeMenu(){
+    newRecipeMenuEl.style.display = 'none';
+  }
+  newRecipeBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    closeAccountMenu();
+    newRecipeMenuEl.style.display = newRecipeMenuEl.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('#newRecipeWrap')) closeNewRecipeMenu();
+  });
+  document.getElementById('newBreadBtn').addEventListener('click', function(){ closeNewRecipeMenu(); newRecipe('bread'); });
+  document.getElementById('newConfectionBtn').addEventListener('click', function(){ closeNewRecipeMenu(); newRecipe('confection'); });
+  document.getElementById('newOtherBtn').addEventListener('click', function(){ closeNewRecipeMenu(); newRecipe('other'); });
+
+  function saveCurrentRecipe(){
+    var payload = serializeCurrentRecipe();
+    var existing = myRecipes.find(function(r){
+      return r.owner_id === currentUser.id && r.recipe_name === payload.recipe_name;
+    });
+    var query = existing
+      ? supabase.from('recipes').update(payload).eq('id', existing.id).select().single()
+      : supabase.from('recipes').insert(Object.assign({ owner_id: currentUser.id }, payload)).select().single();
+    query.then(function(res){
+      if (res.error){ alert('저장 실패: ' + res.error.message); return; }
+      selectedRecipeId = res.data.id;
+      recipeSearchInput.value = '';
+      markClean();
+      loadMyRecipes();
+      showToast('레시피를 저장했어요');
+    });
+  }
+
+  function closeAccountMenu(){
+    accountMenuEl.style.display = 'none';
+  }
+
+  // 재료 관리 / 원가 계산 are the only two screens in this file that fully replace the
+  // calculator instead of floating over it as a small anchored popover — opening one hides
+  // .wrap/.footer outright rather than dimming them behind a modal, so it reads as "navigated
+  // to a different page" rather than "a dialog popped up here."
+  var calculatorWrapEl = document.querySelector('.wrap');
+  var calculatorFooterEl = document.querySelector('.footer');
+  function showSubpage(pageEl){
+    calculatorWrapEl.style.display = 'none';
+    calculatorFooterEl.style.display = 'none';
+    pageEl.style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+  function hideSubpage(pageEl){
+    pageEl.style.display = 'none';
+    calculatorWrapEl.style.display = '';
+    calculatorFooterEl.style.display = '';
+  }
+
+  function openIngredientManagerModal(){
+    ingredientManagerSearchInput.value = ''; // don't carry over a filter from the last time this was open
+    renderIngredientManager();
+    showSubpage(ingredientManagerPageEl);
+    closeIngredientManagerBtn.focus();
+  }
+  function closeIngredientManagerModal(){
+    hideSubpage(ingredientManagerPageEl);
+  }
+  closeIngredientManagerBtn.addEventListener('click', closeIngredientManagerModal);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && ingredientManagerPageEl.style.display !== 'none') closeIngredientManagerModal();
+  });
+
+  function openCostCalcModal(){
+    costRecipeSearchInput.value = '';
+    closeCostRecipeDropdown();
+    costModalRecipe = null;
+    costCalcBodyEl.style.display = 'none';
+    costNoRecipeHintEl.style.display = 'block';
+    showSubpage(costCalcPageEl);
+    closeCostCalcBtn.focus();
+  }
+  function closeCostCalcModal(){
+    hideSubpage(costCalcPageEl);
+  }
+  closeCostCalcBtn.addEventListener('click', closeCostCalcModal);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && costCalcPageEl.style.display !== 'none') closeCostCalcModal();
+  });
+
+  function openCompositeProductsModal(){
+    loadCompositeProducts();
+    showSubpage(compositeProductsPageEl);
+    closeCompositeProductsBtn.focus();
+  }
+  function closeCompositeProductsModal(){
+    hideSubpage(compositeProductsPageEl);
+  }
+  closeCompositeProductsBtn.addEventListener('click', closeCompositeProductsModal);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && compositeProductsPageEl.style.display !== 'none') closeCompositeProductsModal();
+  });
+
+  // Recipe picker inside the modal — same show-everything-on-focus/filter-on-type pattern as
+  // "내 레시피" (loadRecipeByName() et al.), but its own instance, and only offers recipes
+  // this user owns (RLS only allows the owner to write flours/ingredients/products back, so
+  // a shared-with-me recipe would just fail to save here anyway).
+  function renderCostRecipeDropdown(showAll){
+    var q = showAll ? '' : costRecipeSearchInput.value.trim().toLowerCase();
+    var matches = myRecipes.filter(function(r){
+      return currentUser && r.owner_id === currentUser.id && (!q || (r.recipe_name || '').toLowerCase().indexOf(q) !== -1);
+    });
+    costRecipeDropdownEl.innerHTML = '';
+    if (matches.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'combo-dropdown-empty';
+      empty.textContent = '일치하는 레시피가 없어요';
+      costRecipeDropdownEl.appendChild(empty);
+      return;
+    }
+    matches.forEach(function(r){
+      var item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'combo-dropdown-item';
+      item.textContent = r.recipe_name || '이름 없는 레시피';
+      item.addEventListener('click', function(){
+        closeCostRecipeDropdown();
+        costRecipeSearchInput.value = '';
+        openCostCalcRecipe(r);
+      });
+      costRecipeDropdownEl.appendChild(item);
+    });
+  }
+  function openCostRecipeDropdown(showAll){
+    renderCostRecipeDropdown(showAll);
+    costRecipeDropdownEl.style.display = 'block';
+  }
+  function closeCostRecipeDropdown(){
+    costRecipeDropdownEl.style.display = 'none';
+  }
+  costRecipeSearchInput.addEventListener('focus', function(){ openCostRecipeDropdown(true); });
+  costRecipeSearchInput.addEventListener('input', function(){ openCostRecipeDropdown(false); });
+  costRecipeDropdownToggleBtn.addEventListener('click', function(){
+    if (costRecipeDropdownEl.style.display === 'none') { costRecipeSearchInput.focus(); openCostRecipeDropdown(true); }
+    else closeCostRecipeDropdown();
+  });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.cost-recipe-combo')) closeCostRecipeDropdown();
+  });
+
+  // Loads an independent working copy of the picked recipe's flours/ingredients — this never
+  // touches the main calculator's `state`, so linking ingredients here is safe regardless of
+  // whatever recipe (if any) is currently open in the editor behind this modal.
+  // migrateIngredientRow() (the same exact-name auto-match applyRecipeRowToState() runs when
+  // loading a recipe into the main editor) runs here too — otherwise a recipe that's only
+  // ever been opened through this modal (never through the main editor) would show every
+  // ingredient as unlinked even when a same-named ingredient already exists in myIngredients.
+  function openCostCalcRecipe(recipe){
+    costModalRecipe = {
+      id: recipe.id,
+      type: (recipe.recipe_type === 'confection' || recipe.recipe_type === 'other') ? recipe.recipe_type : 'bread',
+      flours: (Array.isArray(recipe.flours) ? recipe.flours : []).map(function(f){ return migrateIngredientRow(Object.assign({}, f)); }),
+      ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map(function(i){ return migrateIngredientRow(Object.assign({}, i)); })
+    };
+    costRecipeNameHeadingEl.textContent = recipe.recipe_name || '이름 없는 레시피';
+    costNoRecipeHintEl.style.display = 'none';
+    costCalcBodyEl.style.display = 'block';
+    renderCostIngredientsList();
+    loadProducts(recipe.id);
+  }
+
+  // Persists just the ingredient-DB links back to this recipe's row — the recipe's own
+  // `name`/`pct`/`weight` fields are carried through untouched (this modal never edits them).
+  function saveCostRecipeLinks(){
+    if (!costModalRecipe) return;
+    supabase.from('recipes').update({
+      flours: costModalRecipe.flours,
+      ingredients: costModalRecipe.ingredients
+    }).eq('id', costModalRecipe.id).then(function(res){
+      if (res.error){ alert('재료 연결 저장 실패: ' + res.error.message); return; }
+      // Keep myRecipes in sync so re-opening this recipe (here or in the main editor) reflects the new links.
+      var cached = myRecipes.find(function(r){ return r.id === costModalRecipe.id; });
+      if (cached){ cached.flours = costModalRecipe.flours; cached.ingredients = costModalRecipe.ingredients; }
+    });
+  }
+
+  function renderCostIngredientsList(){
+    costIngredientsListEl.innerHTML = '';
+    // Computed once per render so every row's "원가 기여 %" is against the same total —
+    // recomputed (via the full re-render in attachIngredientLinker's onChange below) whenever
+    // a link changes, so relinking one ingredient updates every row's share, not just its own.
+    var breakdown = computeCostBreakdown(costModalRecipe);
+    var rows = costModalRecipe.flours.concat(costModalRecipe.ingredients);
+    rows.forEach(function(row, idx){
+      var item = breakdown.items[idx];
+      var isResolved = row.ingredientId && myIngredients.some(function(ig){ return ig.id === row.ingredientId; });
+      var suggestion = !isResolved ? findSimilarIngredient(row.name) : null;
+      var rowEl = document.createElement('div');
+      rowEl.className = 'cost-ing-row';
+      rowEl.innerHTML =
+        '<div class="cost-ing-name"></div>' +
+        '<div class="ing-link-combo"><input class="ing-link-input" autocomplete="off"><div class="combo-dropdown" style="display:none;"></div></div>' +
+        '<div class="cost-ing-price"></div>' +
+        (suggestion
+          ? '<div class="cost-ing-suggestion">혹시 "' + escapeHtml(suggestion.name) + '"인가요? <button type="button" class="cost-ing-suggestion-btn">연결</button></div>'
+          : '');
+      costIngredientsListEl.appendChild(rowEl);
+      var nameEl = rowEl.querySelector('.cost-ing-name');
+      nameEl.textContent = row.name || '';
+      if (item.category){
+        var categoryTag = document.createElement('span');
+        categoryTag.className = 'cost-ing-category';
+        categoryTag.textContent = item.category;
+        nameEl.appendChild(categoryTag);
+      }
+      var priceEl = rowEl.querySelector('.cost-ing-price');
+      if (item.pricePerGram !== null){
+        var contribution = breakdown.totalCost > 0 ? Math.round(item.cost / breakdown.totalCost * 100) : 0;
+        priceEl.textContent = (Math.round(item.pricePerGram * 100) / 100) + '원/g · 원가 기여 ' + contribution + '%';
+      } else {
+        priceEl.textContent = '단가 없음';
+        priceEl.classList.add('warn-hint');
+      }
+      var input = rowEl.querySelector('.ing-link-input');
+      var dropdown = rowEl.querySelector('.combo-dropdown');
+      attachIngredientLinker(input, dropdown, row, function(){
+        saveCostRecipeLinks();
+        renderCostIngredientsList(); // rebuild (its own tail already calls refreshProductCosts()) so price/contribution reflect the new link
+      });
+      if (suggestion){
+        rowEl.querySelector('.cost-ing-suggestion-btn').addEventListener('click', function(){
+          row.ingredientId = suggestion.id;
+          saveCostRecipeLinks();
+          renderCostIngredientsList();
+        });
+      }
+    });
+    refreshProductCosts();
+  }
+
+  function applyAuthUI(){
+    closeAccountMenu();
+    if (currentUser){
+      var label = currentUser.email || currentUser.id;
+      accountChipBtn.setAttribute('aria-label', '내 계정 (' + label + ')');
+      accountChipBtn.title = label;
+      accountChipBtn.classList.add('primary'); // filled = logged in; the icon alone doesn't change
+      logoutBtn.textContent = '로그아웃 (' + label + ')';
+      authRowEl.style.display = 'none';
+      loggedInRowEl.style.display = '';
+      saveBtn.style.display = '';
+      saveBtnBottom.style.display = '';
+      updateDirtyUI(); // catches the edge case of edits made before logging in
+      libraryCardEl.style.display = 'block';
+      loadMyRecipes();
+      loadMyIngredients();
+    } else {
+      accountChipBtn.setAttribute('aria-label', '로그인');
+      accountChipBtn.title = '';
+      accountChipBtn.classList.remove('primary');
+      authRowEl.style.display = '';
+      loggedInRowEl.style.display = 'none';
+      saveBtn.style.display = 'none';
+      saveBtnBottom.style.display = 'none';
+      libraryCardEl.style.display = 'none';
+      closeIngredientManagerModal();
+      closeCostCalcModal();
+      closeCompositeProductsModal();
+      myRecipes = [];
+      myIngredients = [];
+      myCompositeProducts = [];
+      recipeSearchInput.value = '';
+      clearSelectedRecipe();
+      markClean();
+    }
+  }
+
+  function initSharedView(){
+    // Landing for a `?share=<token>` link: pre-fills the calculator from the one recipe
+    // the token points to. Login/save controls stay put (wired separately by
+    // initAccountMode(), which always runs) — a signed-out visitor just gets to look, but
+    // logging in and hitting "레시피 저장" saves this same state as a new recipe under
+    // their own account, which is how a shared recipe gets "copied in".
+    subTextEl.style.display = 'none';
+    sharedBannerEl.style.display = 'block';
+
+    if (!supabase){
+      sharedBannerEl.textContent = 'Supabase 설정이 안 돼 있어서 공유 링크를 열 수 없어요.';
+      return;
+    }
+    supabase.rpc('get_recipe_by_share_token', { p_token: sharedViewToken }).then(function(res){
+      if (res.error || !res.data || !res.data.length){
+        sharedBannerEl.textContent = '공유 링크를 찾을 수 없어요 (잘못됐거나 공유가 꺼졌을 수 있어요).';
+        return;
+      }
+      applyRecipeRowToState(res.data[0]);
+    });
+  }
+
+  function initAccountMode(){
+    accountChipBtn.addEventListener('click', function(){
+      closeNewRecipeMenu();
+      accountMenuEl.style.display = accountMenuEl.style.display === 'none' ? 'block' : 'none';
+    });
+
+    manageIngredientsBtn.addEventListener('click', function(){
+      closeAccountMenu();
+      openIngredientManagerModal();
+    });
+    openCostCalcBtn.addEventListener('click', function(){
+      closeAccountMenu();
+      openCostCalcModal();
+    });
+    openCompositeProductsBtn.addEventListener('click', function(){
+      closeAccountMenu();
+      openCompositeProductsModal();
+    });
+    document.getElementById('addCompositeProductBtn').addEventListener('click', function(){
+      if (!currentUser) return;
+      supabase.from('composite_products').insert({ owner_id: currentUser.id }).select().single().then(function(res){
+        if (res.error){ alert('조합 제품 추가 실패: ' + res.error.message); return; }
+        res.data.composite_product_components = [];
+        myCompositeProducts.push(res.data);
+        renderCompositeProductsList();
+        var rows = compositeProductsListEl.querySelectorAll('.composite-name');
+        var last = rows[rows.length - 1];
+        if (last){
+          last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          last.focus();
+          last.select();
+        }
+      });
+    });
+    document.getElementById('addIngredientMasterBtn').addEventListener('click', function(){
+      if (!currentUser) return;
+      supabase.from('ingredients').insert({ owner_id: currentUser.id, name: '새 재료' }).select().single().then(function(res){
+        if (res.error){ alert('재료 추가 실패: ' + res.error.message); return; }
+        myIngredients.push(res.data);
+        ingredientManagerSearchInput.value = ''; // clear any filter — otherwise the new row could render invisible if it doesn't match
+        renderIngredientManager();
+        // The list can get long enough that the newly-added row is off-screen below the
+        // "+ 재료 추가" button — scroll to it and focus its name field instead of leaving the
+        // user to hunt for it themselves.
+        var rows = ingredientManagerListEl.querySelectorAll('.ing-mgr-name');
+        var last = rows[rows.length - 1];
+        if (last){
+          last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          last.focus();
+          last.select();
+        }
+      });
+    });
+    ingredientManagerSearchInput.addEventListener('input', function(){
+      renderIngredientManager(ingredientManagerSearchInput.value);
+    });
+    document.getElementById('addProductBtn').addEventListener('click', function(){
+      if (!currentUser || !costModalRecipe) return;
+      // Same batch, different shapes (e.g. PLF dough cut into both croissants and pains au
+      // chocolat) usually share roughly the same trim loss — inherit the last product's
+      // 로스율 as a starting point instead of making the user retype the same number every
+      // time; they can still edit it per product if one shape actually trims differently.
+      var inheritedLossRate = myProducts.length > 0 ? (myProducts[myProducts.length - 1].loss_rate_pct || 0) : 0;
+      supabase.from('products').insert({
+        owner_id: currentUser.id, recipe_id: costModalRecipe.id, name: '새 제품', loss_rate_pct: inheritedLossRate
+      }).select().single().then(function(res){
+        if (res.error){ alert('제품 추가 실패: ' + res.error.message); return; }
+        myProducts.push(res.data);
+        renderProductsList();
+      });
+    });
+    document.addEventListener('click', function(e){
+      if (!e.target.closest('.account-chip-wrap')) closeAccountMenu();
+    });
+
+    // If the user hand-edits the name after loading a recipe (instead of using "새
+    // 레시피" or picking a different one from search), `selectedRecipeId` would otherwise
+    // keep pointing at the recipe that was loaded, not the name now on screen — so share/
+    // delete could silently act on the wrong recipe. Drop the selection the moment the name
+    // changes; saving still works fine afterward since that's matched by name, not this id.
+    // (Only fires on real typing — setting .value from code, e.g. when loading a recipe,
+    // doesn't dispatch an input event.)
+    recipeNameInput.addEventListener('input', function(){
+      if (selectedRecipeId) clearSelectedRecipe();
+      markDirty();
+    });
+    notesInput.addEventListener('input', markDirty);
+
+    // Without an explicit redirectTo, Supabase falls back to its "Site URL" setting once
+    // the OAuth round trip completes — which can land back on the site root instead of
+    // this page. Pin it to this exact URL (this same string must also be added to
+    // Supabase's Authentication → URL Configuration → Redirect URLs allow-list).
+    var loginRedirect = location.origin + location.pathname;
+    googleBtn.addEventListener('click', function(){
+      if (supabase) supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: loginRedirect } });
+    });
+    logoutBtn.addEventListener('click', function(){
+      if (supabase) supabase.auth.signOut();
+    });
+    saveBtn.addEventListener('click', function(){
+      if (!currentUser) { alert('먼저 로그인해주세요'); return; }
+      saveCurrentRecipe();
+    });
+    saveBtnBottom.addEventListener('click', function(){
+      if (!currentUser) { alert('먼저 로그인해주세요'); return; }
+      saveCurrentRecipe();
+    });
+
+    if (!supabase){
+      accountChipBtn.setAttribute('aria-label', '로그인 불가');
+      accountChipBtn.title = '로그인 불가';
+      authHintEl.textContent = supabaseConfigured
+        ? '로그인 서비스를 불러오지 못했어요. 인터넷 연결을 확인해주세요.'
+        : '계정 기능을 쓰려면 이 파일의 SUPABASE_URL/SUPABASE_ANON_KEY를 채워주세요.';
+      authHintEl.style.display = 'block';
+      googleBtn.disabled = true;
+      return;
+    }
+
+    supabase.auth.onAuthStateChange(function(_event, session){
+      currentUser = session ? session.user : null;
+      applyAuthUI();
+    });
+    supabase.auth.getSession().then(function(res){
+      currentUser = res.data.session ? res.data.session.user : null;
+      applyAuthUI();
+    });
+  }
+
+  initAccountMode();
+  if (sharedViewToken) initSharedView();
+
+  render();
+})();
+</script>
+</body>
+</html>
