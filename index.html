@@ -5,38 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#2A241C">
+<meta name="theme-color" content="#0B0C0E">
 <title>제빵 계산기</title>
 <style>
   :root{
-    --bg: #E8E1D0;
-    --bg-card: #FBF9F4;
-    --ink: #2A241C;
-    --ink-soft: #786F5F;
-    --accent-stamp: #B23A2E;
-    --accent-wheat: #A9791F;
-    --accent-green: #4C6947;
-    --border: #D6CDB8;
-    --border-strong: #BFB496;
+    --bg: #0B0C0E;
+    --bg-card: #17181C;
+    --bg-elevated: #202127;
+    --ink: #EDEDF0;
+    --ink-soft: #8B8D98;
+    --accent: #5E6AD2;
+    --accent-soft: rgba(94,106,210,0.16);
+    --danger: #E5484D;
+    --danger-soft: rgba(229,72,77,0.16);
+    --success: #3DD68C;
+    --border: #232429;
+    --border-strong: #34363D;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-pop: 0 8px 24px rgba(0,0,0,0.45);
+    --shadow-footer: 0 -8px 24px rgba(0,0,0,0.4);
     --font-display: ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
     --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
+  }
+  /* Light variant of the same design language (not the old bakery palette) — toggled by
+     JS setting data-theme on <html> and remembered in localStorage. Every rule below
+     already reads these as var()s, so this override block is the only place theme values
+     live; nothing else needs a light-specific copy. */
+  html[data-theme="light"]{
+    --bg: #F5F6F8;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #FFFFFF;
+    --ink: #1C1C1F;
+    --ink-soft: #6B6F76;
+    --accent: #5E6AD2;
+    --accent-soft: rgba(94,106,210,0.10);
+    --danger: #E5484D;
+    --danger-soft: rgba(229,72,77,0.10);
+    --success: #1F9D55;
+    --border: #E4E5E9;
+    --border-strong: #D3D5DB;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.05), 0 1px 1px rgba(0,0,0,0.03);
+    --shadow-pop: 0 8px 24px rgba(0,0,0,0.12);
+    --shadow-footer: 0 -8px 24px rgba(0,0,0,0.08);
   }
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html,body{
     margin:0; padding:0; background:var(--bg); color:var(--ink);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
-  body{
-    padding-bottom: 132px; /* room for sticky footer */
-    background-image:
-      radial-gradient(circle at 1px 1px, rgba(42,36,28,0.05) 1px, transparent 0);
-    background-size: 14px 14px;
-  }
-  .wrap{ max-width: 560px; margin: 0 auto; padding: 20px 16px 24px; }
+  body{ padding-bottom: 132px; /* room for sticky footer */ }
+  .wrap{ max-width: 580px; margin: 0 auto; padding: 28px 18px 24px; }
 
-  header{ padding: 6px 2px 18px; }
+  header{ padding: 6px 2px 20px; }
+  .header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .header-actions{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .icon-btn{
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    width:44px; height:44px; padding:0; border-radius:999px;
+    border: 1.5px solid var(--border-strong); background: var(--bg-elevated); color: var(--ink);
+    cursor:pointer; text-decoration:none;
+  }
+  .icon-btn svg{ width:20px; height:20px; display:block; }
+  .icon-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .icon-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
+  /* Which icon shows follows data-theme purely in CSS — dark (default) shows the moon,
+     light shows the sun; applyTheme() in JS only needs to set the attribute. */
+  .theme-toggle .icon-sun{ display:none; }
+  html[data-theme="light"] .theme-toggle .icon-sun{ display:block; }
+  html[data-theme="light"] .theme-toggle .icon-moon{ display:none; }
   .eyebrow{
     font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--ink-soft); margin: 0 0 4px;
@@ -50,25 +89,25 @@
   .recipe-name{
     width:100%; margin: 16px 0 0; padding: 12px 14px;
     font-family: var(--font-display); font-weight: 800; font-size: 17px;
-    background: var(--bg-card); border: 1.5px solid var(--border-strong);
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong);
     border-radius: 10px; color: var(--ink);
   }
 
   .io-row{ display:flex; gap:8px; margin-top: 10px; }
   .io-btn{
     flex:1; padding: 10px 12px; border-radius: 10px;
-    border: 1.5px solid var(--border-strong); background: var(--bg-card);
+    border: 1.5px solid var(--border-strong); background: var(--bg-elevated);
     font-family: var(--font-display); font-weight: 800; font-size: 13px;
     color: var(--ink); cursor:pointer; min-height: 44px;
   }
-  .io-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
-  .io-btn:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+  .io-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .io-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* Segmented mode toggle */
   .mode-toggle{
     display:flex; gap:6px; background: var(--bg-card);
-    border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 5px;
-    margin-top: 18px;
+    border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 6px;
+    margin-top: 20px;
   }
   .mode-btn{
     flex:1; border:none; background:transparent; padding: 12px 6px;
@@ -81,29 +120,30 @@
   .mode-btn[aria-pressed="true"]{
     background: var(--ink); color: var(--bg-card);
   }
-  .mode-btn[aria-pressed="true"] .tag{ color: #E8E1D0; opacity:0.85;}
-  .mode-btn:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+  .mode-btn[aria-pressed="true"] .tag{ color: var(--bg); opacity:0.85;}
+  .mode-btn:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
 
   section.card{
     background: var(--bg-card); border: 1.5px solid var(--border);
-    border-radius: 14px; padding: 16px 14px; margin-top: 14px;
+    border-radius: 14px; padding: 20px 18px; margin-top: 18px;
+    box-shadow: var(--shadow-card);
   }
   .card h2{
     font-family: var(--font-display); font-size: 13px; font-weight: 800;
     letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
-    margin: 0 0 12px;
+    margin: 0 0 14px;
   }
 
   .field-row{ display:flex; align-items:center; gap:10px; }
-  .field-row + .field-row{ margin-top: 12px; }
+  .field-row + .field-row{ margin-top: 14px; }
   .field-label{ font-size: 14px; font-weight: 600; flex: 0 0 auto; min-width: 92px; }
   input[type="number"]{
-    font-family: var(--font-mono); font-weight: 700; font-size: 18px;
-    background: #fff; border: 1.5px solid var(--border-strong); border-radius: 8px;
-    padding: 11px 10px; width: 100%; color: var(--ink); min-height: 46px;
+    font-family: var(--font-mono); font-weight: 700; font-size: 21px;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 11px 10px; width: 100%; color: var(--ink); min-height: 48px;
   }
-  input[type="number"]:focus{ outline: 3px solid var(--accent-wheat); outline-offset: 1px; }
-  input[type="number"][readonly]{ background: rgba(169,121,31,0.08); color: var(--accent-wheat); border-color: var(--accent-wheat); }
+  input[type="number"]:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  input[type="number"][readonly]{ background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
   .unit{ font-family: var(--font-mono); font-size: 14px; color: var(--ink-soft); flex:0 0 auto; }
 
   .portion-row{
@@ -115,79 +155,82 @@
   .portion-qty{ flex: 0 1 64px; min-width: 0; }
   .portion-sep{ font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); flex: 0 0 auto; }
   .portion-subtotal{
-    font-family: var(--font-mono); font-weight: 800; font-size: 14px; color: var(--accent-wheat);
+    font-family: var(--font-mono); font-weight: 800; font-size: 15px; color: var(--accent);
     flex: 0 0 auto; min-width: 72px; text-align: right;
   }
 
   .stepper-row{ display:flex; gap:8px; margin-top: 12px; flex-wrap: wrap; }
   .chip{
     font-family: var(--font-mono); font-weight: 700; font-size: 14px;
-    background: #fff; border: 1.5px solid var(--border-strong); color: var(--ink);
-    border-radius: 999px; padding: 9px 16px; cursor:pointer; min-height: 40px;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); color: var(--ink);
+    border-radius: 999px; padding: 9px 16px; cursor:pointer; min-height: 44px;
   }
-  .chip[aria-pressed="true"]{ background: var(--accent-wheat); border-color: var(--accent-wheat); color: #fff; }
-  .chip:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+  .chip[aria-pressed="true"]{ background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
 
   .pmpm{ display:flex; align-items:center; gap:8px; margin-top: 12px; }
   .pmpm button{
-    width: 42px; height: 42px; border-radius: 8px; border: 1.5px solid var(--border-strong);
-    background: #fff; font-size: 20px; font-weight: 800; color: var(--ink); cursor:pointer;
+    width: 44px; height: 44px; border-radius: 8px; border: 1.5px solid var(--border-strong);
+    background: var(--bg-elevated); font-size: 20px; font-weight: 800; color: var(--ink); cursor:pointer;
   }
-  .pmpm button:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset:2px; }
+  .pmpm button:focus-visible{ outline: 3px solid var(--accent); outline-offset:2px; }
   .pmpm input{ text-align:center; }
 
   .hint{ font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; line-height:1.5; }
   .hint button.link{
-    background:none; border:none; padding:0; color: var(--accent-stamp);
+    background:none; border:none; padding:0; color: var(--accent);
     font-weight:700; font-size: 12.5px; cursor:pointer; text-decoration: underline;
   }
 
-  /* Ingredient rows */
+  /* Ingredient rows — pct (de-emphasized, muted) vs weight (the number you actually weigh
+     out, given the accent tint) are deliberately styled apart so the two columns read as
+     different kinds of data at a glance, not just two number boxes side by side. */
   .ing-row{
-    display:grid; grid-template-columns: minmax(0,1fr) 74px 104px 34px;
-    gap: 8px; align-items:center; padding: 10px 0;
+    display:grid; grid-template-columns: minmax(0,1fr) 58px 112px 44px;
+    gap: 8px; align-items:center; padding: 12px 0;
     border-bottom: 1px solid var(--border);
   }
   .ing-row:last-of-type{ border-bottom: none; }
-  .ing-row.flour-row{ background: rgba(169,121,31,0.08); border-radius: 8px; padding: 10px 8px; margin: -2px -8px 4px; border-bottom:none; }
-  .ing-row.reorderable{ grid-template-columns: minmax(0,1fr) 74px 104px 30px 34px; }
+  .ing-row.flour-row{ background: var(--accent-soft); border-radius: 8px; padding: 12px 8px; margin: -2px -8px 4px; border-bottom:none; }
+  .ing-row.reorderable{ grid-template-columns: minmax(0,1fr) 58px 112px 30px 44px; }
   .ing-name{
     font-family: var(--font-body); font-weight: 700; font-size: 14.5px;
     background: transparent; border: none; border-bottom: 1.5px dashed var(--border-strong);
     padding: 6px 2px; color: var(--ink); min-height:36px; min-width: 0;
   }
-  .ing-name:focus{ outline:none; border-bottom-color: var(--accent-wheat); }
+  .ing-name:focus{ outline:none; border-bottom-color: var(--accent); }
   .ing-name[readonly]{ border-bottom: none; font-weight: 800; }
   .pct-input{
-    font-family: var(--font-mono); font-size: 15px; font-weight:700; text-align:right;
-    padding: 8px 6px; min-height: 36px; min-width: 0;
+    font-family: var(--font-mono); font-size: 16px; font-weight:700; text-align:right;
+    background: var(--bg); border: 1.5px solid var(--border); color: var(--ink-soft);
+    border-radius: 8px; padding: 8px 6px; min-height: 44px; min-width: 0;
   }
-  .pct-input[readonly]{ background: transparent; border-color: transparent; color: var(--accent-wheat); }
+  .pct-input[readonly]{ background: transparent; border-color: transparent; color: var(--accent); }
   .weight-cell{ display:flex; align-items:center; justify-content:flex-end; gap:3px; min-width:0; }
   .weight-input{
-    font-family: var(--font-mono); font-weight: 800; font-size: 15px; text-align:right;
-    background: #fff; border: 1.5px solid var(--border-strong); border-radius: 8px;
-    padding: 8px 4px; min-height: 36px; width: 100%; min-width:0; color: var(--ink);
+    font-family: var(--font-mono); font-weight: 800; font-size: 17px; text-align:right;
+    background: var(--accent-soft); border: 1.5px solid var(--accent); border-radius: 8px;
+    padding: 8px 6px; min-height: 44px; width: 100%; min-width:0; color: var(--ink);
   }
-  .weight-input:focus{ outline: 3px solid var(--accent-wheat); outline-offset: 1px; }
+  .weight-input:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
   .weight-unit{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); flex:0 0 auto; }
-  .flour-row .weight-input{ color: var(--accent-wheat); border-color: var(--accent-wheat); }
+  .flour-row .weight-input{ color: var(--accent); border-color: var(--accent); }
   .del-btn{
-    background: none; border: none; color: var(--ink-soft); font-size: 20px;
-    width: 34px; height: 34px; cursor: pointer; border-radius: 6px;
+    background: none; border: none; color: var(--ink-soft); font-size: 22px;
+    width: 44px; height: 44px; cursor: pointer; border-radius: 6px;
   }
-  .del-btn:hover{ color: var(--accent-stamp); }
-  .del-btn:focus-visible{ outline: 2px solid var(--accent-wheat); }
+  .del-btn:hover{ color: var(--danger); }
+  .del-btn:focus-visible{ outline: 2px solid var(--accent); }
 
   .reorder-btns{ display:flex; flex-direction:column; gap:2px; min-width: 0; }
   .reorder-btns button{
     width: 100%; height: 17px; line-height:1; font-size: 10px; padding:0;
-    border: 1px solid var(--border-strong); background:#fff; color: var(--ink-soft);
+    border: 1px solid var(--border-strong); background:var(--bg-elevated); color: var(--ink-soft);
     border-radius: 4px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
-  .reorder-btns button:hover:not(:disabled){ color: var(--accent-wheat); border-color: var(--accent-wheat); }
+  .reorder-btns button:hover:not(:disabled){ color: var(--accent); border-color: var(--accent); }
   .reorder-btns button:disabled{ opacity: 0.3; cursor:default; }
-  .reorder-btns button:focus-visible{ outline: 2px solid var(--accent-wheat); }
+  .reorder-btns button:focus-visible{ outline: 2px solid var(--accent); }
 
   .add-btn{
     width:100%; margin-top: 12px; padding: 12px; border-radius: 10px;
@@ -195,10 +238,10 @@
     font-family: var(--font-display); font-weight: 800; font-size: 14px;
     color: var(--ink-soft); cursor:pointer;
   }
-  .add-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
+  .add-btn:hover{ border-color: var(--accent); color: var(--accent); }
 
-  .warn-hint{ color: var(--accent-stamp); font-weight: 700; }
-  #flourCard.invalid{ border-color: var(--accent-stamp); }
+  .warn-hint{ color: var(--danger); font-weight: 700; }
+  #flourCard.invalid{ border-color: var(--danger); }
 
   .lib-row{
     display:flex; align-items:center; gap:8px; padding: 10px 0;
@@ -212,10 +255,10 @@
   .lib-actions{ display:flex; gap:6px; flex:0 0 auto; }
   .lib-btn{
     font-family: var(--font-display); font-weight: 800; font-size: 12.5px;
-    border-radius: 8px; padding: 8px 10px; cursor:pointer; min-height: 36px;
-    border: 1.5px solid var(--border-strong); background: #fff; color: var(--ink);
+    border-radius: 8px; padding: 8px 10px; cursor:pointer; min-height: 44px;
+    border: 1.5px solid var(--border-strong); background: var(--bg-elevated); color: var(--ink);
   }
-  .lib-btn:hover{ border-color: var(--accent-wheat); color: var(--accent-wheat); }
+  .lib-btn:hover{ border-color: var(--accent); color: var(--accent); }
 
   .lib-toggle{
     display:flex; align-items:center; justify-content:space-between; width:100%;
@@ -228,47 +271,50 @@
     transition: transform 0.2s ease;
   }
   .lib-toggle[aria-expanded="false"] .lib-toggle-icon{ transform: rotate(-90deg); }
-  .lib-toggle:focus-visible{ outline: 3px solid var(--accent-wheat); outline-offset: 2px; }
+  .lib-toggle:focus-visible{ outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* Sticky footer stamp */
   .footer{
     position: fixed; left:0; right:0; bottom:0;
-    background: var(--ink); color: var(--bg-card);
+    background: var(--bg-elevated); color: var(--ink);
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
     display:flex; align-items:center; gap:14px;
-    box-shadow: 0 -6px 20px rgba(0,0,0,0.18);
+    border-top: 1px solid var(--border);
+    box-shadow: var(--shadow-footer);
   }
-  .footer-inner{ max-width: 560px; margin: 0 auto; width:100%; display:flex; align-items:center; gap:14px; }
+  .footer-inner{ max-width: 580px; margin: 0 auto; width:100%; display:flex; align-items:center; gap:14px; }
   .stamp{
     flex: 0 0 auto; width: 78px; height: 78px; border-radius: 50%;
-    border: 3px solid var(--accent-stamp); color: var(--accent-stamp);
+    border: 3px solid var(--accent); color: var(--accent);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    transform: rotate(-8deg); background: rgba(178,58,46,0.06);
+    background: var(--accent-soft);
   }
-  .stamp .num{ font-family: var(--font-mono); font-weight: 900; font-size: 18px; line-height:1; }
+  .stamp .num{ font-family: var(--font-mono); font-weight: 900; font-size: 20px; line-height:1; }
   .stamp .u{ font-family: var(--font-mono); font-size: 9px; letter-spacing:0.06em; margin-top:2px; }
   .footer-text{ flex:1; min-width:0; }
-  .footer-label{ font-size: 11px; letter-spacing:0.06em; text-transform:uppercase; color: #C9C2B2; }
-  .footer-value{ font-family: var(--font-mono); font-weight: 800; font-size: 20px; margin-top:2px; }
+  .footer-label{ font-size: 11px; letter-spacing:0.06em; text-transform:uppercase; color: var(--ink-soft); }
+  .footer-value{ font-family: var(--font-mono); font-weight: 800; font-size: 21px; margin-top:2px; }
   .copy-btn{
-    flex: 0 0 auto; background: var(--bg-card); color: var(--ink); border:none;
+    flex: 0 0 auto; background: var(--accent); color: #fff; border:none;
     padding: 12px 14px; border-radius: 10px; font-family: var(--font-display);
     font-weight: 800; font-size: 13px; cursor:pointer; min-height: 44px;
   }
   .copy-btn:active{ transform: scale(0.97); }
-  .copy-btn.copied{ background: var(--accent-green); color:#fff; }
+  .copy-btn.copied{ background: var(--success); color:#fff; }
 
   .toast{
     position: fixed; left:50%; bottom: 150px; transform: translateX(-50%);
-    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 999px;
+    background: var(--bg-elevated); color: var(--ink); border: 1px solid var(--border-strong);
+    padding: 10px 18px; border-radius: 999px;
     font-size: 13px; font-weight:700; opacity:0; pointer-events:none;
+    box-shadow: var(--shadow-pop);
     transition: opacity 0.25s ease;
   }
   .toast.show{ opacity: 1; }
 
   @media (max-width: 360px){
-    .ing-row{ grid-template-columns: minmax(0,1fr) 62px 86px 30px; }
-    .ing-row.reorderable{ grid-template-columns: minmax(0,1fr) 62px 86px 26px 30px; }
+    .ing-row{ grid-template-columns: minmax(0,1fr) 46px 92px 44px; }
+    .ing-row.reorderable{ grid-template-columns: minmax(0,1fr) 46px 92px 26px 44px; }
     h1{ font-size: 26px; }
   }
 </style>
@@ -276,8 +322,36 @@
 <body>
 <div class="wrap">
   <header>
-    <p class="eyebrow">MINO · 계량 도구</p>
-    <h1>제빵 계산기</h1>
+    <div class="header-row">
+      <div>
+        <p class="eyebrow">MINO · 계량 도구</p>
+        <h1>제빵 계산기</h1>
+      </div>
+      <div class="header-actions">
+        <a class="icon-btn" href="https://gigimeal-netizen.github.io/mino-account/" target="_blank" rel="noopener" aria-label="내 계정에서 레시피 저장/공유하기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </a>
+        <button class="icon-btn theme-toggle" id="themeToggleBtn" aria-label="화면 모드 전환">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <line x1="12" y1="2" x2="12" y2="4"></line>
+            <line x1="12" y1="20" x2="12" y2="22"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="2" y1="12" x2="4" y2="12"></line>
+            <line x1="20" y1="12" x2="22" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
     <p class="sub">밀가루 기준 베이커스 퍼센트로 배율·총 반죽량을 계산해요.</p>
     <p class="recipe-name" id="recipeName">기본 바게트 반죽</p>
     <div class="io-row">
@@ -389,6 +463,25 @@
 
 <script>
 (function(){
+  // Light/dark toggle: :root holds the dark theme (this app's default); a `data-theme`
+  // attribute on <html> switches to the light override block in <style>. This is the one
+  // deliberate exception to "no localStorage" — it's a display preference, not recipe
+  // data, so it's fine for it to survive a refresh even though nothing else does.
+  var THEME_KEY = 'mino-theme';
+  var themeToggleBtn = document.getElementById('themeToggleBtn');
+  var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환');
+    themeColorMeta.setAttribute('content', theme === 'dark' ? '#0B0C0E' : '#F5F6F8');
+  }
+  applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
+  themeToggleBtn.addEventListener('click', function(){
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+
   var state = {
     mode: 'A',
     flours: [
