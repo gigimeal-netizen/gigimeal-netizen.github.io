@@ -542,17 +542,28 @@
     }
   }
 
+  // 2026-07-27: pctFromWeight()가 roundPct()(2자리)로 저장하던 걸 roundPctPrecise()(6자리)로
+  // 바꿨다 — 총 반죽량이 큰 배치에서 타이핑한 무게가 %로 변환·저장된 뒤 화면 갱신 때 다시
+  // 무게로 역산되면서 1g씩 밀리는 버그가 있었다(계정용 account.html에서 먼저 발견/수정, 같은
+  // 핵심 로직이라 여기도 동일하게 적용). 저장은 6자리로 정밀하게, 화면 표시는 roundPct(2자리)
+  // 그대로 — 사용자가 보는 숫자는 "59.51%"지만 그램 역산에 쓰이는 값은 훨씬 정밀하다.
   function pctFromWeight(weight, flourWeight){
     if (!flourWeight) return 0;
-    return roundPct((parseFloat(weight)||0) / flourWeight * 100);
+    return roundPctPrecise((parseFloat(weight)||0) / flourWeight * 100);
   }
 
   // Weight↔% conversions produce float noise (e.g. 2.1999999999999997) that, left
   // unrounded, makes the % field show a long digit string and visually clip in its
   // narrow column. Round to 2 decimals — plenty of precision for a percentage, and
-  // clean enough to never overflow.
+  // clean enough to never overflow. Display-only now (see roundPctPrecise for storage).
   function roundPct(p){
     return Math.round((parseFloat(p)||0) * 100) / 100;
+  }
+  // Storage-precision rounding — still eliminates float noise, but keeps enough
+  // resolution (6 decimals) that a weight typed in and immediately converted back
+  // (weight → % → weight) reproduces the same gram value even for large batch totals.
+  function roundPctPrecise(p){
+    return Math.round((parseFloat(p)||0) * 1e6) / 1e6;
   }
 
   // % / weight boxes are a fixed width, but recipes can scale up to numbers with far
@@ -975,11 +986,11 @@
       return { weight: parseFloat(p && p.weight) || 0, qty: parseFloat(p && p.qty) || 1 };
     });
     state.flours = (Array.isArray(data.flours) ? data.flours : []).map(function(f){
-      return { name: String(f && f.name || ''), pct: roundPct(f && f.pct) };
+      return { name: String(f && f.name || ''), pct: roundPctPrecise(f && f.pct) };
     });
     if (state.flours.length === 0) state.flours = [{ name: '밀가루', pct: 100 }];
     state.ingredients = (Array.isArray(data.ingredients) ? data.ingredients : []).map(function(i){
-      return { name: String(i && i.name || ''), pct: roundPct(i && i.pct) };
+      return { name: String(i && i.name || ''), pct: roundPctPrecise(i && i.pct) };
     });
 
     baseFlourInput.value = state.baseFlour;
