@@ -2,7 +2,16 @@
 -- BOM 원가계산 리뉴얼 — 1단계: 스키마 + 기존 데이터 이관
 -- 스펙: 2026-08-18_BOM원가계산_스펙.md
 --
--- 실행 방법: Supabase 대시보드 → SQL Editor에 이 파일 전체를 붙여넣고 실행.
+-- ★ 실행 방법 (처음이면 그대로 따라 하면 된다)
+--   1. supabase.com 로그인 → 이 프로젝트 선택
+--   2. 왼쪽 메뉴에서 "SQL Editor" 클릭 → "New query" 클릭
+--   3. 이 파일 **전체**를 복사해서 붙여넣기 (PART D는 주석 처리돼 있어 실행되지 않는다)
+--   4. 오른쪽 아래 "Run" 클릭 (또는 Ctrl+Enter)
+--   5. 결과창에 표가 하나 나온다 → "판정" 열이 전부 OK면 성공 (PART C의 C-3 결과)
+--
+--   ※ 여러 쿼리를 한 번에 실행하면 SQL 에디터는 **마지막 쿼리 결과만** 보여준다.
+--     그래서 확인표(C-3)를 일부러 맨 뒤에 뒀다. C-1/C-2 목록을 보고 싶으면
+--     그 쿼리만 마우스로 드래그해서 선택한 뒤 Run 하면 그 결과만 나온다.
 --
 -- ★ 안전성
 --   - 기존 테이블(recipes / ingredients / products / composite_products …)을
@@ -335,62 +344,40 @@ $migrate$;
 
 -- ============================================================================
 -- PART C — 검증
---   아래 두 쿼리를 실행해 "차이" 열이 전부 0인지 확인한다.
---   (원가 값 자체의 대조는 2단계에서 앱 안에서 신·구 엔진을 비교하는 방식으로 한다)
+--
+--   SQL 에디터는 여러 쿼리를 한 번에 실행하면 **마지막 쿼리 결과만** 화면에 보여준다.
+--   그래서 제일 중요한 "이관이 잘 됐나?" 확인표(C-3)를 **일부러 맨 뒤에** 뒀다 —
+--   파일 전체를 붙여넣고 실행하면 그 표가 화면에 나온다.
+--
+--   C-1 / C-2는 "그래서 뭘 정리해야 하나"를 보는 목록이다. 나중에 궁금할 때
+--   그 쿼리만 마우스로 드래그해서 선택한 뒤 Run 하면 그 결과만 따로 볼 수 있다.
 -- ============================================================================
 
--- C-1. 품목 개수: 구 테이블 합계 = 새 items 개수(자동 생성분 제외)
-select
-  (select count(*) from ingredients)                                  as 구_재료,
-  (select count(*) from recipes)                                      as 구_레시피,
-  (select count(*) from products)                                     as 구_제품,
-  (select count(*) from composite_products)                           as 구_조합제품,
-  (select count(*) from items where legacy_ingredient_id is not null) as 신_재료,
-  (select count(*) from items where recipe_id is not null)            as 신_레시피,
-  (select count(*) from items where legacy_product_id is not null)    as 신_제품,
-  (select count(*) from items where legacy_composite_id is not null)  as 신_조합제품,
-  (select count(*) from items
-     where legacy_ingredient_id is null and recipe_id is null
-       and legacy_product_id is null and legacy_composite_id is null) as 자동생성_재료,
-  (select count(*) from ingredients) - (select count(*) from items where legacy_ingredient_id is not null) as 차이_재료,
-  (select count(*) from recipes)     - (select count(*) from items where recipe_id is not null)            as 차이_레시피,
-  (select count(*) from products)    - (select count(*) from items where legacy_product_id is not null)    as 차이_제품,
-  (select count(*) from composite_products) - (select count(*) from items where legacy_composite_id is not null) as 차이_조합제품;
-
--- C-2. 배합 라인 개수: 레시피의 jsonb 배열 길이 합계 = 새 bom_lines 개수
---      "누락" 열이 0이 아니면, 이름이 비어 있어 이관되지 못한 행이 있다는 뜻이다.
-select
-  (select coalesce(sum(jsonb_array_length(coalesce(flours,'[]'::jsonb))
-                     + jsonb_array_length(coalesce(ingredients,'[]'::jsonb))), 0) from recipes) as 구_배합라인,
-  (select count(*) from bom_lines bl join items i on i.id = bl.parent_item_id where i.recipe_id is not null) as 신_배합라인,
-  (select coalesce(sum(jsonb_array_length(coalesce(flours,'[]'::jsonb))
-                     + jsonb_array_length(coalesce(ingredients,'[]'::jsonb))), 0) from recipes)
-    - (select count(*) from bom_lines bl join items i on i.id = bl.parent_item_id where i.recipe_id is not null) as 누락;
-
--- C-3. 자동 생성된(단가 없는) 품목 목록 — 앱에서 채워 넣어야 할 것들
-select name, category, owner_id
+-- C-1. 단가가 비어 있는 품목 목록 — 앱에서 채워 넣어야 할 것들
+select name as 품목, category as 분류
 from items
 where kind = 'purchased' and purchase_amount = 0
 order by name;
 
--- C-4. 레시피와 이름이 같은 구매 품목 — 직접 확인 후 결정할 것.
---   예: "묵은반죽"이라는 레시피가 있는데 다른 레시피의 재료 행에도 "묵은반죽"이라고 적혀 있으면,
---   made 품목(레시피)과 purchased 품목(자동 생성) 두 개가 같은 이름으로 생긴다.
---   이관은 일부러 **레시피끼리 자동 연결하지 않는다** — 스펙 §3.3에서 하위 배합 중첩을
---   기본에서 뺐기 때문이다. 여기 나오는 품목은 둘 중 하나로 정리하면 된다:
---     (a) purchased 쪽에 직접 단가를 넣고 그대로 쓴다 (권장 — 스펙 §3.3의 의도)
---     (b) purchased 쪽을 지우고 배합 라인을 made 품목으로 옮겨 자동 계산시킨다
-select p.name as 재료_이름, m.name as 레시피_이름, p.owner_id
+-- C-2. 이름이 겹치거나 비슷해 중복일 가능성이 있는 품목 (스펙 §10-2 "목록 폭발" 확인용)
+--
+--   (a) 레시피와 이름이 같은 구매 품목:
+--       예를 들어 "묵은반죽"이라는 레시피가 있는데 다른 레시피의 재료 행에도 "묵은반죽"이라고
+--       적혀 있으면, made 품목(레시피)과 purchased 품목(자동 생성) 두 개가 같은 이름으로 생긴다.
+--       이관은 일부러 **레시피끼리 자동 연결하지 않는다** — 스펙 §3.3에서 하위 배합 중첩을
+--       기본에서 뺐기 때문이다. 둘 중 하나로 정리하면 된다:
+--         · purchased 쪽에 직접 단가를 넣고 그대로 쓴다 (권장 — 스펙 §3.3의 의도)
+--         · purchased 쪽을 지우고 배합 라인을 made 품목으로 옮겨 자동 계산시킨다
+--   (b) 한쪽 이름이 다른 쪽에 통째로 들어가 있는 구매 품목 쌍 ("버터" / "무염버터" 등)
+select '레시피와 같은 이름' as 유형, p.name as 이름1, m.name as 이름2
 from items p
 join items m
   on m.owner_id = p.owner_id
  and m.kind = 'made'
  and normalize_for_match(m.name) = normalize_for_match(p.name)
 where p.kind = 'purchased'
-order by p.name;
-
--- C-5. 이름이 비슷해 중복일 가능성이 있는 품목 (스펙 §10-2 "목록 폭발" 확인용)
-select a.name as 이름1, b.name as 이름2
+union all
+select '비슷한 이름', a.name, b.name
 from items a
 join items b
   on a.owner_id = b.owner_id
@@ -399,7 +386,48 @@ join items b
  and normalize_for_match(a.name) <> normalize_for_match(b.name)
  and (normalize_for_match(a.name) like '%' || normalize_for_match(b.name) || '%'
    or normalize_for_match(b.name) like '%' || normalize_for_match(a.name) || '%')
-order by a.name;
+order by 1, 2;
+
+-- C-3. ★★ 이관 검증 — 파일 전체를 실행하면 이 표가 화면에 나온다.
+--      "판정" 열이 전부 OK면 성공. 마지막 줄(새로 만들어진 재료)만 '참고'로 표시된다.
+select
+  항목, 이관전, 이관후,
+  case
+    when 이관전 < 0 then '참고'
+    when 이관전 = 이관후 then 'OK'
+    else '확인 필요'
+  end as 판정
+from (
+  select 1 as 순서, '재료 (ingredients)' as 항목,
+         (select count(*) from ingredients) as 이관전,
+         (select count(*) from items where legacy_ingredient_id is not null) as 이관후
+  union all
+  select 2, '레시피 (recipes)',
+         (select count(*) from recipes),
+         (select count(*) from items where recipe_id is not null)
+  union all
+  select 3, '제품 (products)',
+         (select count(*) from products),
+         (select count(*) from items where legacy_product_id is not null)
+  union all
+  select 4, '조합 제품',
+         (select count(*) from composite_products),
+         (select count(*) from items where legacy_composite_id is not null)
+  union all
+  select 5, '배합 라인',
+         (select coalesce(sum(jsonb_array_length(coalesce(flours,'[]'::jsonb))
+                            + jsonb_array_length(coalesce(ingredients,'[]'::jsonb))), 0) from recipes),
+         (select count(*) from bom_lines bl join items i on i.id = bl.parent_item_id where i.recipe_id is not null)
+  union all
+  -- 비교 대상이 아니라 참고용이다(이관 전에는 없던 것). 레시피에 이름만 있고 재료 연결이
+  -- 없던 행들에서 새로 만들어진 품목 개수 = 앱에서 단가를 채워야 할 개수(C-1 목록의 길이).
+  select 6, '새로 만들어진 재료 (단가 입력 필요)',
+         -1,
+         (select count(*) from items
+           where legacy_ingredient_id is null and recipe_id is null
+             and legacy_product_id is null and legacy_composite_id is null)
+) t
+order by 순서;
 
 
 -- ============================================================================
