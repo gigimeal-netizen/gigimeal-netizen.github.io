@@ -607,3 +607,16 @@ create table tag_list_order (
 alter table tag_list_order enable row level security;
 create policy "user manages own tag order" on tag_list_order for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================================
+-- BOM 원가계산 레이어 (items / bom_lines / item_price_history) — 이 파일에 아직 없음
+--
+-- 스펙: 2026-08-18_BOM원가계산_스펙.md
+-- DDL + 기존 데이터 이관: supabase/2026-08-18_bom_migration.sql
+--
+-- 왜 여기 안 넣었나: 2026-08-18 현재 account.html은 이 테이블들을 **아직 전혀 읽지 않는다**
+-- (스펙 §9의 1단계만 끝난 상태 — 화면은 여전히 ingredients/products/composite_products를 쓴다).
+-- 설계가 아직 움직이는 중이라 DDL을 두 파일에 복사해두면 어긋나기만 한다.
+-- 앱이 실제로 이 테이블을 쓰기 시작하는 시점(스펙 §9의 3단계)에 위 마이그레이션 파일의
+-- PART A를 이 파일로 옮겨온다.
+-- ============================================================================
