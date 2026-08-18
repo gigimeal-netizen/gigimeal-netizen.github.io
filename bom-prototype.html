@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BOM 품목 화면 프로토타입 — Mino</title>
+<!--
+  2026-08-18 BOM 원가계산 리뉴얼 UI 프로토타입.
+
+  목적: 스키마/마이그레이션을 만들기 전에 화면을 먼저 확인받는 것.
+  - DB 연결 없음. 아래 MOCK 데이터로만 동작한다. file:// 로 열어도 된다.
+  - 디자인 토큰/컴포넌트는 account.html에서 그대로 가져왔다 — 나중에 접어 넣기 쉽게.
+  - 숫자는 하드코딩이 아니라 실제 rollupCost()로 계산된다(스펙 §5). 입력을 바꾸면 즉시 다시 계산돼서
+    UI와 계산 로직을 동시에 검증할 수 있다.
+
+  확인해주셨으면 하는 것:
+   1) 목록에 구매 재료 / 반죽 / 판매 제품이 섞여 있는 게 괜찮은지 (필터 칩으로 충분한지)
+   2) 펼쳐서 편집하는 방식(아코디언)이 맞는지, 아니면 별도 화면으로 들어가야 하는지
+   3) 소금빵(판매 제품) 화면에서 원가 구성이 한눈에 들어오는지
+   4) 계란(개수 구매) 입력칸이 이해되는지
+   5) 묵은반죽처럼 "직접 입력" 전환이 자연스러운지
+-->
+<style>
+  :root{
+    --bg: #0B0C0E;
+    --bg-card: #17181C;
+    --bg-elevated: #202127;
+    --ink: #EDEDF0;
+    --ink-soft: #8B8D98;
+    --accent: #5E6AD2;
+    --accent-soft: rgba(94,106,210,0.16);
+    --danger: #E5484D;
+    --danger-soft: rgba(229,72,77,0.16);
+    --success: #3DD68C;
+    --border: #232429;
+    --border-strong: #34363D;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-pop: 0 8px 24px rgba(0,0,0,0.45);
+    --shadow-footer: 0 -8px 24px rgba(0,0,0,0.4);
+    --font-display: ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
+  }
+  html[data-theme="light"]{
+    --bg: #F5F6F8; --bg-card: #FFFFFF; --bg-elevated: #FFFFFF;
+    --ink: #1C1C1F; --ink-soft: #6B6F76;
+    --accent-soft: rgba(94,106,210,0.10); --danger-soft: rgba(229,72,77,0.10);
+    --success: #1F9D55; --border: #E4E5E9; --border-strong: #D3D5DB;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.05); --shadow-pop: 0 8px 24px rgba(0,0,0,0.12);
+    --shadow-footer: 0 -8px 24px rgba(0,0,0,0.08);
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family: var(--font-body); -webkit-font-smoothing: antialiased;
+  }
+  body{ padding-bottom: 84px; }
+  .wrap{ max-width: 580px; margin: 0 auto; padding: 22px 18px 24px; }
+
+  .header-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  h1{ font-family: var(--font-display); font-weight: 900; font-size: 26px; margin: 0; }
+  .header-actions{ display:flex; align-items:center; gap:8px; }
+  .icon-btn{
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    width:44px; height:44px; padding:0; border-radius:999px;
+    border:1.5px solid var(--border-strong); background:var(--bg-elevated);
+    color:var(--ink); cursor:pointer;
+  }
+  .icon-btn svg{ width:20px; height:20px; }
+  .icon-btn:hover{ border-color: var(--accent); color: var(--accent); }
+
+  .proto-banner{
+    margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+    background: var(--accent-soft); border: 1.5px solid var(--accent);
+    font-size: 12.5px; line-height: 1.6; color: var(--ink);
+  }
+  .proto-banner b{ color: var(--accent); }
+
+  .io-btn{
+    flex:1; padding: 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--border-strong); background: var(--bg-elevated);
+    font-family: var(--font-display); font-weight: 800; font-size: 13px;
+    color: var(--ink); cursor:pointer; min-height: 44px;
+  }
+  .io-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .io-btn.primary{ background: var(--accent); border-color: var(--accent); color:#fff; }
+  .io-btn.danger{ color: var(--danger); border-color: var(--danger); }
+
+  section.card{
+    background: var(--bg-card); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 20px 18px; margin-top: 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .card h2{
+    font-family: var(--font-display); font-size: 13px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+  .field-row{ display:flex; align-items:center; gap:10px; }
+  .field-row + .field-row{ margin-top: 12px; }
+  .field-label{ font-size: 13.5px; font-weight: 600; flex: 0 0 auto; min-width: 96px; color: var(--ink-soft); }
+  .hint{ font-size: 12.5px; color: var(--ink-soft); margin-top: 10px; line-height:1.5; word-break: keep-all; }
+  .warn-hint{ color: var(--danger); font-weight: 700; }
+  .unit{ font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); flex:0 0 auto; }
+
+  .text-input{
+    font-family: var(--font-body); font-size: 14px; flex: 1 1 auto; min-width: 0;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 10px; color: var(--ink); min-height: 44px;
+  }
+  .text-input:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  input[type="number"]{
+    font-family: var(--font-mono); font-size: 15px; font-weight: 700; text-align: right;
+    background: var(--bg-elevated); border: 1.5px solid var(--border-strong); border-radius: 8px;
+    padding: 10px; color: var(--ink); min-height: 44px; width: 92px; flex: 0 0 auto;
+  }
+  input[type="number"]:focus{ outline: 3px solid var(--accent); outline-offset: 1px; }
+  input[type="number"].wide{ flex: 1 1 auto; width: auto; }
+
+  /* 필터 칩 — account.html의 .tag-chip 그대로 */
+  .chip-bar{ display:flex; flex-wrap:wrap; gap:6px; margin: 14px 0 4px; }
+  .chip{
+    padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--border-strong);
+    background: var(--bg-elevated); font-family: var(--font-body); font-size: 12.5px;
+    font-weight: 700; color: var(--ink-soft); cursor: pointer;
+  }
+  .chip:hover{ border-color: var(--accent); color: var(--accent); }
+  .chip.active{ background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* 아코디언 행 — account.html의 .acc-row-* 그대로 */
+  .acc-row{ border-bottom: 1px solid var(--border); }
+  .acc-row:last-of-type{ border-bottom: none; }
+  .acc-row-toggle{
+    display: block; width: 100%; padding: 14px 0; background: transparent; border: none;
+    font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .acc-row-toggle-top{ display: flex; align-items: center; gap: 8px; }
+  .acc-row-name-label{
+    flex: 1 1 auto; min-width: 0; overflow-wrap: break-word;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+  }
+  .acc-row-warn-icon{ flex: 0 0 auto; width: 18px; height: 18px; color: var(--danger); }
+  .acc-row-chevron{
+    flex: 0 0 auto; width: 20px; height: 20px; display: block;
+    color: var(--ink-soft); transition: transform .15s;
+  }
+  .acc-row[data-expanded="true"] .acc-row-chevron{ transform: rotate(180deg); }
+  .acc-row-toggle-summary{
+    margin-top: 4px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-soft);
+    white-space: pre-line;
+  }
+  .acc-row-detail{ padding: 4px 0 18px; }
+
+  /* 품목 종류 배지 */
+  .kind-badge{
+    flex:0 0 auto; font-family: var(--font-body); font-size: 10.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border-strong);
+    color: var(--ink-soft); background: var(--bg-elevated);
+  }
+  .kind-badge.sellable{ color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .kind-badge.manual{ color: var(--ink-soft); }
+
+  /* BOM 구성 라인 */
+  .bom-line{
+    display:flex; align-items:center; gap:8px; padding: 9px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .bom-line:last-of-type{ border-bottom: none; }
+  .bom-line-name{ flex: 1 1 auto; min-width:0; font-size: 14px; overflow-wrap:break-word; }
+  .bom-line-name .sub{ display:block; font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .bom-line-qty{ flex: 0 0 auto; width: 78px; }
+  .bom-line-cost{
+    flex: 0 0 auto; min-width: 72px; text-align: right;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink);
+  }
+  .bom-line-cost.unpriced{ color: var(--danger); font-size: 11.5px; font-weight: 700; }
+  .del-btn{
+    background: none; border: none; color: var(--ink-soft); font-size: 20px;
+    width: 34px; height: 34px; cursor: pointer; border-radius: 6px; flex:0 0 auto;
+  }
+  .del-btn:hover{ color: var(--danger); }
+
+  .add-btn{
+    width:100%; margin-top: 12px; padding: 12px; border-radius: 10px;
+    border: 1.5px dashed var(--border-strong); background: transparent;
+    font-family: var(--font-display); font-weight: 800; font-size: 13px;
+    color: var(--ink-soft); cursor:pointer;
+  }
+  .add-btn:hover{ border-color: var(--accent); color: var(--accent); }
+
+  /* 원가 요약 박스 */
+  .cost-summary{
+    background: var(--bg-elevated); border-radius: 10px; padding: 14px;
+    margin-bottom: 14px;
+  }
+  .cost-summary-row{ display:flex; justify-content:space-between; align-items:baseline; padding: 3px 0; }
+  .cost-summary-row .k{ font-size: 13px; color: var(--ink-soft); }
+  .cost-summary-row .v{ font-family: var(--font-mono); font-size: 15px; font-weight: 800; }
+  .cost-summary-row.big .v{ font-size: 21px; color: var(--accent); }
+  .cost-summary-row.margin .v{ color: var(--success); }
+
+  /* 원가 산정 방식 토글 */
+  .seg{ display:flex; gap:0; border:1.5px solid var(--border-strong); border-radius:10px; overflow:hidden; }
+  .seg button{
+    flex:1; padding: 10px 8px; background: var(--bg-elevated); border:none; cursor:pointer;
+    font-family: var(--font-display); font-weight: 800; font-size: 12.5px; color: var(--ink-soft);
+    min-height: 44px;
+  }
+  .seg button[aria-pressed="true"]{ background: var(--accent); color:#fff; }
+
+  /* 가격 변화 표 */
+  .price-history{ margin-top: 6px; }
+  .ph-row{
+    display:flex; align-items:center; gap:10px; padding: 8px 0;
+    border-bottom: 1px dashed var(--border); font-family: var(--font-mono); font-size: 12.5px;
+  }
+  .ph-row:last-child{ border-bottom:none; }
+  .ph-date{ flex:0 0 52px; color: var(--ink-soft); }
+  .ph-price{ flex:1 1 auto; }
+  .ph-unit{ flex:0 0 auto; color: var(--ink-soft); }
+  .ph-delta{ flex:0 0 56px; text-align:right; font-weight:700; }
+  .ph-delta.up{ color: var(--danger); }
+  .ph-delta.down{ color: var(--success); }
+
+  .link-btn{
+    display:block; background:none; border:none; padding:0; margin-top:10px;
+    color: var(--accent); font-weight:700; font-size: 12.5px; cursor:pointer; text-decoration: underline;
+  }
+
+  .divider{ height:1px; background: var(--border); margin: 16px 0; }
+
+  .bottom-nav{
+    position: fixed; left:0; right:0; bottom:0; z-index: 60;
+    background: var(--bg-elevated); border-top: 1px solid var(--border);
+    box-shadow: var(--shadow-footer); padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-nav-inner{ max-width: 580px; margin: 0 auto; width:100%; display:flex; }
+  .bottom-nav-btn{
+    flex: 1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 3px; min-height: 60px; background:none; border:none; cursor:pointer;
+    color: var(--ink-soft); font-family: var(--font-display); font-weight: 700; font-size: 10.5px;
+  }
+  .bottom-nav-btn svg{ width: 22px; height: 22px; }
+  .bottom-nav-btn.active{ color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header-row">
+    <h1>재료</h1>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" aria-label="테마 전환">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="proto-banner">
+    <b>UI 프로토타입입니다.</b> 저장되지 않고, 새로고침하면 처음 상태로 돌아갑니다.<br>
+    숫자는 실제 롤업 계산으로 나옵니다 — 무게·가격을 바꾸면 원가가 바로 다시 계산됩니다.
+  </div>
+
+  <section class="card">
+    <input class="text-input" id="searchInput" placeholder="이름으로 찾기" style="width:100%;">
+
+    <div class="chip-bar" id="chipBar"></div>
+
+    <p class="hint warn-hint" id="autoAddedHint" style="display:none;"></p>
+
+    <div class="divider"></div>
+
+    <div id="itemList"></div>
+
+    <button class="add-btn" id="addItemBtn">+ 재료 추가</button>
+  </section>
+</div>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bottom-nav-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      레시피
+    </button>
+    <button class="bottom-nav-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"></path></svg>
+      아카이브
+    </button>
+    <button class="bottom-nav-btn active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+      재료
+    </button>
+    <button class="bottom-nav-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
+      원가
+    </button>
+  </div>
+</nav>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── MOCK 데이터 ────────────────────────────────────────────────────────────
+  // 실제 앱에서는 items / bom_lines / item_price_history 세 테이블에서 온다(스펙 §4, §7).
+  var ITEMS = [
+    // 구매 품목 ------------------------------------------------------------
+    { id:'flour', name:'밀가루', kind:'purchased', cost_mode:'manual', category:'분류: 가루',
+      supplier:'코끼리 강력분', purchase_amount:25, purchase_unit:'kg', purchase_price:37500 },
+    { id:'water', name:'물', kind:'purchased', cost_mode:'manual', category:'',
+      supplier:'', purchase_amount:1, purchase_unit:'kg', purchase_price:0 },
+    { id:'salt', name:'소금', kind:'purchased', cost_mode:'manual', category:'분류: 기타',
+      supplier:'신안 천일염', purchase_amount:1, purchase_unit:'kg', purchase_price:2000 },
+    { id:'yeast', name:'이스트', kind:'purchased', cost_mode:'manual', category:'분류: 기타',
+      supplier:'saf 인스턴트', purchase_amount:500, purchase_unit:'g', purchase_price:10000 },
+    { id:'butter', name:'버터', kind:'purchased', cost_mode:'manual', category:'분류: 유제품',
+      supplier:'앵커버터', purchase_amount:10, purchase_unit:'kg', purchase_price:150000,
+      history:[
+        { date:'07/02', amount:10, unit:'kg', price:120000 },
+        { date:'07/20', amount:10, unit:'kg', price:135000 },
+        { date:'07/25', amount:10, unit:'kg', price:150000 }
+      ] },
+    { id:'saltbutter', name:'소금버터', kind:'purchased', cost_mode:'manual', category:'분류: 유제품',
+      supplier:'가염버터 큐브', purchase_amount:1, purchase_unit:'kg', purchase_price:18000 },
+    // 개수로 구매하는 품목 (스펙 §12) --------------------------------------
+    { id:'egg', name:'계란', kind:'purchased', cost_mode:'manual', category:'분류: 난류',
+      supplier:'대란 30구', purchase_amount:30, purchase_unit:'ea', purchase_price:9000,
+      usable_weight_g:50, unit_weight_g:60 },
+    // 마이그레이션이 레시피에서 자동 생성했지만 아직 단가가 없는 품목 (스펙 §10-3)
+    { id:'malt', name:'몰트', kind:'purchased', cost_mode:'manual', category:'분류: 미분류',
+      supplier:'', purchase_amount:0, purchase_unit:'g', purchase_price:0, autoAdded:true },
+
+    // 제조 품목 — 직접 입력(manual). 묵은반죽이 여기 해당 (스펙 §3.3) ------
+    { id:'olddough', name:'묵은반죽', kind:'made', cost_mode:'manual',
+      manual_cost_per_gram:0.9, category:'' },
+
+    // 제조 품목 — 배합에서 계산(auto) ---------------------------------------
+    { id:'saltbread_dough', name:'소금빵 반죽', kind:'made', cost_mode:'auto',
+      category:'', process_loss_pct:0, batch_yield_g:null },
+
+    // 판매 제품 -------------------------------------------------------------
+    { id:'saltbread', name:'소금빵', kind:'made', cost_mode:'auto', is_sellable:true,
+      selling_price:3000, category:'', process_loss_pct:0, batch_yield_g:null }
+  ];
+
+  var BOM = {
+    saltbread_dough: [
+      { child:'flour',    qty:100, unit:'pct', is_flour:true },
+      { child:'water',    qty:65,  unit:'pct' },
+      { child:'salt',     qty:2,   unit:'pct' },
+      { child:'yeast',    qty:1,   unit:'pct' },
+      { child:'butter',   qty:5,   unit:'pct' },
+      { child:'olddough', qty:20,  unit:'pct' }
+    ],
+    saltbread: [
+      { child:'saltbread_dough', qty:60, unit:'g', loss_pct:0 },
+      { child:'saltbutter',      qty:12, unit:'g', loss_pct:0 },
+      { child:'salt',            qty:1,  unit:'g', loss_pct:0 }
+    ]
+  };
+
+  var byId = {};
+  ITEMS.forEach(function(it){ byId[it.id] = it; });
+
+  // ── 단가 계산 ──────────────────────────────────────────────────────────────
+  var GRAMS = { g:1, kg:1000, ml:1, l:1000 };
+
+  // 구매 정보 → 원/g, 원/개 (스펙 §12-4)
+  function purchasedUnitCost(it){
+    var amount = parseFloat(it.purchase_amount) || 0;
+    var price = parseFloat(it.purchase_price) || 0;
+    if (it.purchase_unit === 'ea'){
+      var perEa = amount > 0 ? price / amount : 0;
+      var usable = parseFloat(it.usable_weight_g) || 0;
+      return { perGram: usable > 0 ? perEa / usable : 0, perEa: perEa };
+    }
+    var grams = amount * (GRAMS[it.purchase_unit] || 1);
+    return { perGram: grams > 0 ? price / grams : 0, perEa: 0 };
+  }
+
+  // 스펙 §5의 rollupCost() — manual을 만나면 거기서 멈춘다(잎으로 취급).
+  function rollupCost(itemId, memo, visiting){
+    memo = memo || {}; visiting = visiting || {};
+    if (visiting[itemId]) return { perGram:0, perEa:0, unpriced:['(순환 참조)'], yieldG:0 };
+    if (memo[itemId]) return memo[itemId];
+
+    var it = byId[itemId];
+    if (!it) return { perGram:0, perEa:0, unpriced:['(삭제된 품목)'], yieldG:0 };
+
+    if (it.cost_mode === 'manual'){
+      var r;
+      if (it.kind === 'purchased'){
+        var c = purchasedUnitCost(it);
+        // "0원"과 "미입력"을 구분한다 — 스펙 §10-6. 물처럼 진짜 0원인 재료가 있으므로
+        // 가격이 아니라 **구매량을 입력했는지**로 판단한다(구매량 0 = 아직 아무것도 안 넣음).
+        var entered = (parseFloat(it.purchase_amount) || 0) > 0;
+        // 개수로 사면서 사용 무게를 안 넣으면 그램 배합에서는 여전히 못 쓴다(§12-5)
+        var usableInG = it.purchase_unit !== 'ea' || (parseFloat(it.usable_weight_g) || 0) > 0;
+        r = { perGram:c.perGram, perEa:c.perEa, unpriced:(entered && usableInG)?[]:[it.name], yieldG:0 };
+      } else {
+        var m = parseFloat(it.manual_cost_per_gram);
+        // null(미입력)과 0(0원으로 확정)을 구분한다 — 스펙 §10-6
+        var entered = it.manual_cost_per_gram !== null && it.manual_cost_per_gram !== undefined && it.manual_cost_per_gram !== '';
+        r = { perGram:m || 0, perEa:0, unpriced: entered ? [] : [it.name], yieldG:0 };
+      }
+      return (memo[itemId] = r);
+    }
+
+    visiting[itemId] = true;
+    var lines = BOM[itemId] || [];
+    var flourG = 1000; // pct 라인의 기준 밀가루 무게 (실제 앱에서는 계산기의 기준 밀가루)
+    var totalCost = 0, totalWeight = 0, unpriced = [];
+
+    lines.forEach(function(line){
+      var child = rollupCost(line.child, memo, visiting);
+      var g = line.unit === 'pct' ? flourG * line.qty / 100
+            : line.unit === 'ea'  ? line.qty * (parseFloat(byId[line.child] && byId[line.child].usable_weight_g) || 0)
+            : line.qty;
+      var lineCost = line.unit === 'ea' ? line.qty * child.perEa : g * child.perGram;
+      var loss = Math.max(0, Math.min(99, parseFloat(line.loss_pct) || 0)) / 100;
+      totalCost += loss > 0 ? lineCost / (1 - loss) : lineCost;
+      totalWeight += g;
+      child.unpriced.forEach(function(n){ if (unpriced.indexOf(n) === -1) unpriced.push(n); });
+    });
+    delete visiting[itemId];
+
+    var batchG = it.batch_yield_g || totalWeight;
+    var yieldG = batchG * (1 - (Math.max(0, Math.min(99, parseFloat(it.process_loss_pct) || 0)) / 100));
+    var res = { perGram: yieldG > 0 ? totalCost / yieldG : 0, perEa:0, unpriced:unpriced, yieldG:yieldG, totalCost:totalCost };
+    return (memo[itemId] = res);
+  }
+
+  function won(n){ return Math.round(n).toLocaleString('ko-KR'); }
+  function won2(n){ return (Math.round(n * 100) / 100).toLocaleString('ko-KR'); }
+
+  // 판매 제품 1개 원가 = 구성 라인 원가 합계 (산출량으로 나누지 않는다 — 1개 자체가 단위)
+  function sellableUnitCost(itemId){
+    var lines = BOM[itemId] || [];
+    var total = 0, unpriced = [];
+    lines.forEach(function(line){
+      var child = rollupCost(line.child, {}, {});
+      var g = line.unit === 'ea' ? line.qty * (parseFloat(byId[line.child] && byId[line.child].usable_weight_g) || 0) : line.qty;
+      var lineCost = line.unit === 'ea' ? line.qty * child.perEa : g * child.perGram;
+      var loss = Math.max(0, Math.min(99, parseFloat(line.loss_pct) || 0)) / 100;
+      total += loss > 0 ? lineCost / (1 - loss) : lineCost;
+      child.unpriced.forEach(function(n){ if (unpriced.indexOf(n) === -1) unpriced.push(n); });
+    });
+    return { cost: total, unpriced: unpriced };
+  }
+
+  function lineCostOf(line){
+    var child = rollupCost(line.child, {}, {});
+    var g = line.unit === 'pct' ? 1000 * line.qty / 100
+          : line.unit === 'ea'  ? line.qty * (parseFloat(byId[line.child] && byId[line.child].usable_weight_g) || 0)
+          : line.qty;
+    var raw = line.unit === 'ea' ? line.qty * child.perEa : g * child.perGram;
+    var loss = Math.max(0, Math.min(99, parseFloat(line.loss_pct) || 0)) / 100;
+    return { grams:g, cost: loss > 0 ? raw / (1 - loss) : raw, unpriced: child.unpriced.length > 0 };
+  }
+
+  // ── 화면 ───────────────────────────────────────────────────────────────────
+  var FILTERS = [
+    { key:'all',       label:'전체' },
+    { key:'purchased', label:'구매 재료' },
+    { key:'dough',     label:'반죽·반제품' },
+    { key:'product',   label:'판매 제품' }
+  ];
+  // 기본값을 "구매 재료"로 — 마이그레이션 직후 첫인상이 지금의 재료 관리와 같도록 (스펙 §10-2)
+  var activeFilter = 'purchased';
+  var expandedId = null;
+
+  var chipBarEl = document.getElementById('chipBar');
+  var itemListEl = document.getElementById('itemList');
+  var searchEl = document.getElementById('searchInput');
+  var autoAddedHintEl = document.getElementById('autoAddedHint');
+
+  function matchesFilter(it){
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'purchased') return it.kind === 'purchased';
+    if (activeFilter === 'dough') return it.kind === 'made' && !it.is_sellable;
+    if (activeFilter === 'product') return !!it.is_sellable;
+    return true;
+  }
+
+  function renderChips(){
+    chipBarEl.innerHTML = '';
+    FILTERS.forEach(function(f){
+      var count = ITEMS.filter(function(it){
+        var save = activeFilter; activeFilter = f.key;
+        var ok = matchesFilter(it); activeFilter = save; return ok;
+      }).length;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (activeFilter === f.key ? ' active' : '');
+      b.textContent = f.label + ' ' + count;
+      b.addEventListener('click', function(){ activeFilter = f.key; expandedId = null; render(); });
+      chipBarEl.appendChild(b);
+    });
+  }
+
+  function summaryFor(it){
+    if (it.is_sellable){
+      var s = sellableUnitCost(it.id);
+      var price = parseFloat(it.selling_price) || 0;
+      var margin = price - s.cost;
+      var rate = price > 0 ? Math.round(margin / price * 100) : null;
+      return '1개당 ' + won(s.cost) + '원' +
+        (price > 0 ? ' · 마진 ' + won(margin) + '원 (' + rate + '%)' : '') +
+        (s.unpriced.length ? '\n단가 없음: ' + s.unpriced.join(', ') : '');
+    }
+    var r = rollupCost(it.id, {}, {});
+    if (it.kind === 'purchased' && it.purchase_unit === 'ea'){
+      var c = purchasedUnitCost(it);
+      if (c.perEa <= 0) return '단가 미입력';
+      return '개당 ' + won(c.perEa) + '원' + (c.perGram > 0 ? ' · ' + won2(c.perGram) + '원/g' : ' · 무게 미입력');
+    }
+    if (r.unpriced.length && r.unpriced.indexOf(it.name) !== -1) return '단가 미입력';
+    if (it.kind === 'purchased' && r.perGram === 0) return '0원/g (무상)';
+    return won2(r.perGram) + '원/g' +
+      (it.cost_mode === 'manual' && it.kind === 'made' ? ' (직접 입력)' : '') +
+      (r.unpriced.length ? '\n단가 없음: ' + r.unpriced.join(', ') : '');
+  }
+
+  function badgeFor(it){
+    if (it.is_sellable) return { text:'판매 제품', cls:'sellable' };
+    if (it.kind === 'made') return { text:'반죽', cls:'' };
+    return { text:'구매', cls:'' };
+  }
+
+  function render(){
+    renderChips();
+
+    var unpricedAuto = ITEMS.filter(function(it){ return it.autoAdded; });
+    if (unpricedAuto.length){
+      autoAddedHintEl.style.display = 'block';
+      autoAddedHintEl.textContent = '⚠ 레시피에서 자동으로 추가된 재료 ' + unpricedAuto.length +
+        '개 — 단가를 채워주세요 (' + unpricedAuto.map(function(i){ return i.name; }).join(', ') + ')';
+    } else {
+      autoAddedHintEl.style.display = 'none';
+    }
+
+    var q = (searchEl.value || '').trim().toLowerCase();
+    var visible = ITEMS.filter(function(it){
+      return matchesFilter(it) && (!q || it.name.toLowerCase().indexOf(q) !== -1);
+    });
+
+    itemListEl.innerHTML = '';
+    if (visible.length === 0){
+      var p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = '해당하는 재료가 없어요.';
+      itemListEl.appendChild(p);
+      return;
+    }
+
+    visible.forEach(function(it){
+      var row = document.createElement('div');
+      row.className = 'acc-row';
+      if (expandedId === it.id) row.setAttribute('data-expanded', 'true');
+
+      var badge = badgeFor(it);
+      var r = it.is_sellable ? sellableUnitCost(it.id) : rollupCost(it.id, {}, {});
+      var hasIssue = (r.unpriced || []).length > 0;
+
+      var toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'acc-row-toggle';
+      toggle.innerHTML =
+        '<div class="acc-row-toggle-top">' +
+          '<span class="acc-row-name-label"></span>' +
+          '<span class="kind-badge ' + badge.cls + '"></span>' +
+          (hasIssue ? '<svg class="acc-row-warn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>' : '') +
+          '<svg class="acc-row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
+        '</div>' +
+        '<div class="acc-row-toggle-summary"></div>';
+      toggle.querySelector('.acc-row-name-label').textContent = it.name;
+      toggle.querySelector('.kind-badge').textContent = badge.text;
+      toggle.querySelector('.acc-row-toggle-summary').textContent = summaryFor(it);
+      toggle.addEventListener('click', function(){
+        expandedId = (expandedId === it.id) ? null : it.id;
+        render();
+      });
+      row.appendChild(toggle);
+
+      if (expandedId === it.id){
+        var detail = document.createElement('div');
+        detail.className = 'acc-row-detail';
+        if (it.is_sellable) buildSellableDetail(detail, it);
+        else if (it.kind === 'made') buildMadeDetail(detail, it);
+        else buildPurchasedDetail(detail, it);
+        row.appendChild(detail);
+      }
+
+      itemListEl.appendChild(row);
+    });
+  }
+
+  function numRow(parent, label, value, onChange, unit, wide){
+    var row = document.createElement('div');
+    row.className = 'field-row';
+    var lab = document.createElement('span');
+    lab.className = 'field-label';
+    lab.textContent = label;
+    var inp = document.createElement('input');
+    inp.type = 'number';
+    if (wide) inp.className = 'wide';
+    inp.value = (value === null || value === undefined || value === '') ? '' : value;
+    inp.addEventListener('input', function(){ onChange(inp.value === '' ? null : parseFloat(inp.value)); render(); });
+    row.appendChild(lab); row.appendChild(inp);
+    if (unit){
+      var u = document.createElement('span');
+      u.className = 'unit'; u.textContent = unit;
+      row.appendChild(u);
+    }
+    parent.appendChild(row);
+    return inp;
+  }
+
+  // ── 구매 재료 상세 ─────────────────────────────────────────────────────────
+  function buildPurchasedDetail(el, it){
+    var isEa = it.purchase_unit === 'ea';
+
+    var buyRow = document.createElement('div');
+    buyRow.className = 'field-row';
+    buyRow.innerHTML = '<span class="field-label">구매</span>';
+    var amt = document.createElement('input');
+    amt.type = 'number'; amt.value = it.purchase_amount || '';
+    amt.addEventListener('input', function(){ it.purchase_amount = parseFloat(amt.value) || 0; render(); });
+    var unitSel = document.createElement('select');
+    unitSel.className = 'text-input';
+    unitSel.style.flex = '0 0 74px'; unitSel.style.minWidth = '74px';
+    ['g','kg','ml','l','ea'].forEach(function(u){
+      var o = document.createElement('option');
+      o.value = u; o.textContent = (u === 'ea' ? '개' : u);
+      if (it.purchase_unit === u) o.selected = true;
+      unitSel.appendChild(o);
+    });
+    unitSel.addEventListener('change', function(){ it.purchase_unit = unitSel.value; render(); });
+    var price = document.createElement('input');
+    price.type = 'number'; price.value = it.purchase_price || '';
+    price.addEventListener('input', function(){ it.purchase_price = parseFloat(price.value) || 0; render(); });
+    var wonU = document.createElement('span'); wonU.className = 'unit'; wonU.textContent = '원';
+    buyRow.appendChild(amt); buyRow.appendChild(unitSel); buyRow.appendChild(price); buyRow.appendChild(wonU);
+    el.appendChild(buyRow);
+
+    // 개수 구매 → 사용 무게가 주 입력. 없으면 그램 배합에 못 쓴다 (스펙 §12-3, §12-6)
+    if (isEa){
+      numRow(el, '1개당 사용 무게', it.usable_weight_g, function(v){ it.usable_weight_g = v; }, 'g');
+      var h = document.createElement('p');
+      h.className = 'hint';
+      h.textContent = '손질 후, 실제 배합에 들어가는 무게예요 (계란이면 껍질 깐 무게).';
+      el.appendChild(h);
+
+      if (it._showBuyWeight){
+        numRow(el, '구매 기준 무게', it.unit_weight_g, function(v){ it.unit_weight_g = v; }, 'g');
+      } else {
+        var more = document.createElement('button');
+        more.type = 'button'; more.className = 'link-btn';
+        more.textContent = '+ 구매 기준 무게 입력 (선택)';
+        more.addEventListener('click', function(){ it._showBuyWeight = true; render(); });
+        el.appendChild(more);
+      }
+    }
+
+    var c = purchasedUnitCost(it);
+    var res = document.createElement('p');
+    res.className = 'hint';
+    if (isEa){
+      if (!(c.perEa > 0)) { res.className = 'hint warn-hint'; res.textContent = '구매 수량과 가격을 입력해주세요.'; }
+      else if (!(c.perGram > 0)) { res.className = 'hint warn-hint'; res.textContent = '→ 개당 ' + won(c.perEa) + '원 · 1개당 사용 무게를 입력하면 그램으로도 쓸 수 있어요'; }
+      else {
+        var lossTxt = '';
+        if (it._showBuyWeight && it.unit_weight_g > 0 && it.usable_weight_g > 0 && it.unit_weight_g > it.usable_weight_g){
+          lossTxt = ' (손질 로스 ' + Math.round((1 - it.usable_weight_g / it.unit_weight_g) * 100) + '%)';
+        }
+        res.textContent = '→ 개당 ' + won(c.perEa) + '원 · 1g당 ' + won2(c.perGram) + '원' + lossTxt;
+      }
+    } else if ((parseFloat(it.purchase_amount) || 0) > 0){
+      // 가격 0도 유효한 입력이다(물) — 구매량이 들어갔으면 "계산됨"으로 본다
+      res.textContent = '→ 1g당 ' + won2(c.perGram) + '원' + (c.perGram === 0 ? ' (무상)' : '');
+    } else {
+      res.className = 'hint warn-hint';
+      res.textContent = '구매량과 가격을 입력하면 단가가 계산돼요.';
+    }
+    el.appendChild(res);
+
+    var supRow = document.createElement('div');
+    supRow.className = 'field-row';
+    supRow.innerHTML = '<span class="field-label">구매품명</span>';
+    var sup = document.createElement('input');
+    sup.className = 'text-input'; sup.value = it.supplier || '';
+    sup.placeholder = '예: 앵커버터 (비우면 이름과 같음)';
+    supRow.appendChild(sup);
+    el.appendChild(supRow);
+    var supHint = document.createElement('p');
+    supHint.className = 'hint';
+    supHint.textContent = '레시피에는 "' + it.name + '"으로 표시되고, 실제 구매품명은 여기서만 관리해요.';
+    el.appendChild(supHint);
+
+    // 가격 변화 (스펙 §7.4)
+    if (it.history && it.history.length){
+      var d = document.createElement('div'); d.className = 'divider'; el.appendChild(d);
+      var h3 = document.createElement('p');
+      h3.className = 'field-label'; h3.style.minWidth = 'auto'; h3.textContent = '가격 변화';
+      el.appendChild(h3);
+      var ph = document.createElement('div'); ph.className = 'price-history';
+      var sorted = it.history.slice().reverse();
+      sorted.forEach(function(row, i){
+        var prev = sorted[i + 1];
+        var g = row.amount * (GRAMS[row.unit] || 1);
+        var perG = g > 0 ? row.price / g : 0;
+        var delta = '';
+        var cls = '';
+        if (prev){
+          var prevG = prev.amount * (GRAMS[prev.unit] || 1);
+          var prevPerG = prevG > 0 ? prev.price / prevG : 0;
+          if (prevPerG > 0){
+            var pct = Math.round((perG - prevPerG) / prevPerG * 100);
+            if (pct !== 0){ delta = (pct > 0 ? '▲' : '▼') + Math.abs(pct) + '%'; cls = pct > 0 ? 'up' : 'down'; }
+          }
+        }
+        var r = document.createElement('div');
+        r.className = 'ph-row';
+        r.innerHTML = '<span class="ph-date"></span><span class="ph-price"></span><span class="ph-unit"></span><span class="ph-delta ' + cls + '"></span>';
+        r.querySelector('.ph-date').textContent = row.date;
+        r.querySelector('.ph-price').textContent = won(row.price) + '원 / ' + row.amount + row.unit;
+        r.querySelector('.ph-unit').textContent = won2(perG) + '원/g';
+        r.querySelector('.ph-delta').textContent = delta;
+        ph.appendChild(r);
+      });
+      el.appendChild(ph);
+    }
+
+    var actions = document.createElement('div');
+    actions.className = 'field-row';
+    actions.style.marginTop = '16px';
+    actions.innerHTML = '<button type="button" class="io-btn">사용중지</button><button type="button" class="io-btn danger">삭제</button>';
+    el.appendChild(actions);
+  }
+
+  // ── 제조 품목(반죽) 상세 ───────────────────────────────────────────────────
+  function buildMadeDetail(el, it){
+    var segWrap = document.createElement('div');
+    segWrap.className = 'field-row';
+    segWrap.innerHTML = '<span class="field-label">원가 산정</span>';
+    var seg = document.createElement('div');
+    seg.className = 'seg'; seg.style.flex = '1 1 auto';
+    var bManual = document.createElement('button');
+    bManual.type = 'button'; bManual.textContent = '직접 입력';
+    bManual.setAttribute('aria-pressed', it.cost_mode === 'manual' ? 'true' : 'false');
+    bManual.addEventListener('click', function(){ it.cost_mode = 'manual'; render(); });
+    var bAuto = document.createElement('button');
+    bAuto.type = 'button'; bAuto.textContent = '배합에서 계산';
+    bAuto.setAttribute('aria-pressed', it.cost_mode === 'auto' ? 'true' : 'false');
+    bAuto.addEventListener('click', function(){ it.cost_mode = 'auto'; render(); });
+    seg.appendChild(bManual); seg.appendChild(bAuto);
+    segWrap.appendChild(seg);
+    el.appendChild(segWrap);
+
+    if (it.cost_mode === 'manual'){
+      numRow(el, '1g당 원가', it.manual_cost_per_gram, function(v){ it.manual_cost_per_gram = v; }, '원');
+      var mh = document.createElement('p');
+      mh.className = 'hint';
+      mh.textContent = '묵은반죽처럼 배합을 따로 등록하지 않고 넘어가고 싶을 때 쓰세요. 0을 넣어도 됩니다(원가에 안 잡힘).';
+      el.appendChild(mh);
+      return;
+    }
+
+    var r = rollupCost(it.id, {}, {});
+    var sum = document.createElement('div');
+    sum.className = 'cost-summary';
+    sum.innerHTML =
+      '<div class="cost-summary-row big"><span class="k">1g당 원가</span><span class="v">' + won2(r.perGram) + '원</span></div>' +
+      '<div class="cost-summary-row"><span class="k">배합 산출량</span><span class="v">' + won(r.yieldG) + 'g</span></div>' +
+      '<div class="cost-summary-row"><span class="k">배합 총원가</span><span class="v">' + won(r.totalCost || 0) + '원</span></div>';
+    el.appendChild(sum);
+
+    var head = document.createElement('div');
+    head.className = 'field-row';
+    head.innerHTML = '<span class="field-label" style="min-width:auto;flex:1 1 auto;">구성 (배합)</span>';
+    var editBtn = document.createElement('button');
+    editBtn.type = 'button'; editBtn.className = 'io-btn';
+    editBtn.style.flex = '0 0 auto'; editBtn.style.minHeight = '36px'; editBtn.style.padding = '6px 12px';
+    editBtn.textContent = '계산기에서 편집';
+    head.appendChild(editBtn);
+    el.appendChild(head);
+
+    renderBomLines(el, it, true);
+
+    var d = document.createElement('div'); d.className = 'divider'; el.appendChild(d);
+    numRow(el, '산출량', it.batch_yield_g, function(v){ it.batch_yield_g = v; }, 'g');
+    var yh = document.createElement('p');
+    yh.className = 'hint';
+    yh.textContent = '비워두면 재료 합계(' + won(r.yieldG) + 'g)로 자동 계산돼요.';
+    el.appendChild(yh);
+    numRow(el, '제조 로스', it.process_loss_pct, function(v){ it.process_loss_pct = v; }, '%');
+    var ph2 = document.createElement('p');
+    ph2.className = 'hint';
+    ph2.textContent = '믹싱볼에 남거나 발효 중 줄어드는 양이에요. 모르면 비워두세요.';
+    el.appendChild(ph2);
+  }
+
+  // ── 판매 제품 상세 ─────────────────────────────────────────────────────────
+  function buildSellableDetail(el, it){
+    var s = sellableUnitCost(it.id);
+    var price = parseFloat(it.selling_price) || 0;
+    var margin = price - s.cost;
+    var rate = price > 0 ? Math.round(margin / price * 100) : null;
+
+    var sum = document.createElement('div');
+    sum.className = 'cost-summary';
+    sum.innerHTML =
+      '<div class="cost-summary-row big"><span class="k">1개당 원가</span><span class="v">' + won(s.cost) + '원</span></div>' +
+      '<div class="cost-summary-row"><span class="k">판매가</span><span class="v">' + won(price) + '원</span></div>' +
+      '<div class="cost-summary-row margin"><span class="k">마진</span><span class="v">' + won(margin) + '원' + (rate !== null ? ' (' + rate + '%)' : '') + '</span></div>';
+    el.appendChild(sum);
+
+    if (s.unpriced.length){
+      var w = document.createElement('p');
+      w.className = 'hint warn-hint';
+      w.textContent = '⚠ 단가가 없는 재료가 있어요: ' + s.unpriced.join(', ') + ' — 원가가 실제보다 낮게 나옵니다.';
+      el.appendChild(w);
+    }
+
+    var head = document.createElement('p');
+    head.className = 'field-label'; head.style.minWidth = 'auto'; head.style.marginTop = '4px';
+    head.textContent = '구성';
+    el.appendChild(head);
+
+    renderBomLines(el, it, false);
+
+    var add = document.createElement('button');
+    add.type = 'button'; add.className = 'add-btn';
+    add.textContent = '+ 구성 추가';
+    add.addEventListener('click', function(){
+      alert('실제 앱에서는 여기서 검색창이 열립니다.\n\n구매 재료든 반죽이든 같은 검색창에서 고르고,\n없는 이름이면 그 자리에서 새 재료로 등록됩니다.');
+    });
+    el.appendChild(add);
+
+    var d = document.createElement('div'); d.className = 'divider'; el.appendChild(d);
+    numRow(el, '판매가', it.selling_price, function(v){ it.selling_price = v; }, '원', true);
+  }
+
+  // 구성 라인 목록 — 반죽(pct)과 판매 제품(g) 양쪽에서 공유
+  function renderBomLines(el, it, readOnlyQty){
+    var lines = BOM[it.id] || [];
+    if (!lines.length){
+      var p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = '아직 구성이 없어요.';
+      el.appendChild(p);
+      return;
+    }
+    lines.forEach(function(line, idx){
+      var child = byId[line.child];
+      var lc = lineCostOf(line);
+
+      var row = document.createElement('div');
+      row.className = 'bom-line';
+
+      var nameEl = document.createElement('span');
+      nameEl.className = 'bom-line-name';
+      nameEl.textContent = child ? child.name : '(삭제된 재료)';
+      var sub = document.createElement('span');
+      sub.className = 'sub';
+      sub.textContent = line.unit === 'pct'
+        ? (won(lc.grams) + 'g')
+        : (child && child.cost_mode === 'manual' && child.kind === 'made' ? '직접 입력 단가' : '');
+      if (sub.textContent) nameEl.appendChild(sub);
+      row.appendChild(nameEl);
+
+      if (readOnlyQty){
+        var qtyLabel = document.createElement('span');
+        qtyLabel.className = 'bom-line-cost';
+        qtyLabel.style.color = 'var(--ink-soft)';
+        qtyLabel.style.minWidth = '52px';
+        qtyLabel.textContent = line.qty + (line.unit === 'pct' ? '%' : line.unit === 'ea' ? '개' : 'g');
+        row.appendChild(qtyLabel);
+      } else {
+        var qty = document.createElement('input');
+        qty.type = 'number'; qty.className = 'bom-line-qty'; qty.value = line.qty;
+        qty.addEventListener('input', function(){ line.qty = parseFloat(qty.value) || 0; render(); });
+        row.appendChild(qty);
+        var u = document.createElement('span');
+        u.className = 'unit'; u.textContent = line.unit === 'ea' ? '개' : 'g';
+        row.appendChild(u);
+      }
+
+      var costEl = document.createElement('span');
+      if (lc.unpriced){
+        costEl.className = 'bom-line-cost unpriced';
+        costEl.textContent = '단가 없음';
+      } else {
+        costEl.className = 'bom-line-cost';
+        costEl.textContent = won(lc.cost) + '원';
+      }
+      row.appendChild(costEl);
+
+      if (!readOnlyQty){
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'del-btn'; del.textContent = '×';
+        del.addEventListener('click', function(){ lines.splice(idx, 1); render(); });
+        row.appendChild(del);
+      }
+
+      el.appendChild(row);
+    });
+  }
+
+  // ── 기타 ───────────────────────────────────────────────────────────────────
+  searchEl.addEventListener('input', function(){ expandedId = null; render(); });
+  document.getElementById('addItemBtn').addEventListener('click', function(){
+    alert('실제 앱에서는 새 재료 행이 추가되고 이름 입력으로 포커스가 갑니다.');
+  });
+  document.getElementById('themeBtn').addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
